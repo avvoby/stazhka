@@ -8,6 +8,7 @@ from aiogram.types import (
 )
 
 from src.domain.value_objects.application_stage import ApplicationStage
+from src.events.career_week.config import career_week_settings
 
 # ── Справочники ──────────────────────────────────────────────────────────────
 
@@ -149,17 +150,21 @@ def profile_edit_v2_keyboard() -> InlineKeyboardMarkup:
 # ── Главное меню ─────────────────────────────────────────────────────────────
 
 def main_menu_keyboard() -> ReplyKeyboardMarkup:
-    return ReplyKeyboardMarkup(
-        keyboard=[
-            [
-                KeyboardButton(text="🔍 Найти стажировку"),
-                KeyboardButton(text="📋 Мои заявки"),
-            ],
-            [
-                KeyboardButton(text="➕ Добавить вакансию"),
-                KeyboardButton(text="👤 Профиль"),
-            ],
+    keyboard = []
+    if career_week_settings.career_week_enabled:
+        keyboard.append([KeyboardButton(text="🎓 ВЕСЕННЯЯ НЕДЕЛЯ КАРЬЕРЫ ВШБ 🎓")])
+    keyboard += [
+        [
+            KeyboardButton(text="🔍 Найти стажировку"),
+            KeyboardButton(text="📋 Мои заявки"),
         ],
+        [
+            KeyboardButton(text="➕ Добавить вакансию"),
+            KeyboardButton(text="👤 Профиль"),
+        ],
+    ]
+    return ReplyKeyboardMarkup(
+        keyboard=keyboard,
         resize_keyboard=True,
         persistent=True,
     )

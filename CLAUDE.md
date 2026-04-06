@@ -81,6 +81,7 @@ OpenRouter (не прямой Anthropic API)
 | 0001 | initial | users, user_profiles, vacancies, applications |
 | 0002 | vacancy_feedback | таблица vacancy_feedback |
 | 0003 | extend_user_profile | gpa, language, experience, expected_salary, notifications_enabled |
+| 0004 | career_week | career_week_registrations, career_week_roast_bookings, career_week_slots_cache |
 
 ---
 
@@ -112,6 +113,45 @@ OpenRouter (не прямой Anthropic API)
 1. Mock-интервью: отлаживаем slug quality_model на OpenRouter
 2. Telegram parser: заглушка, возвращает [] (нет api_id/api_hash)
 3. SuperJob: клиент написан, не активен (нет API ключа)
+
+---
+
+---
+
+## Модуль Весенней недели карьеры (v2.1)
+
+### Расположение
+src/events/career_week/
+
+### Включение/выключение
+CAREER_WEEK_ENABLED=true/false в .env
+При false — кнопка не показывается, все хендлеры недоступны
+
+### Структура
+- handlers/main.py — регистрация, главное меню недели
+- handlers/partners.py — компании-партнёры
+- handlers/schedule.py — программа мероприятий
+- handlers/roasts.py — запись на прожарки, мои записи, отмена
+- handlers/admin.py — админ-панель (/cwadmin)
+- services/sheets.py — Google Sheets интеграция
+- services/registration.py — регистрация, генерация кода, бронирование
+- services/cache.py — Redis кэш (TTL 24ч), sync_from_sheets()
+
+### Таблицы БД
+career_week_registrations, career_week_roast_bookings,
+career_week_slots_cache (миграция 0004)
+
+### Google Sheets
+ID: 1cKE-HP2Lj3fMYcBcTCdJ4_F-FX-FWp-AvUEIMZPLb4A
+Листы: partners, schedule, roast_slots, programs,
+       admins, registrations, roast_registrations
+
+### Первый администратор
+telegram_id: 5645685337
+
+### Отключение после мероприятия
+Поставить CAREER_WEEK_ENABLED=false и перезапустить бота.
+Все данные сохраняются в БД и Google Sheets.
 
 ---
 

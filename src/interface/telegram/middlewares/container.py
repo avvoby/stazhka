@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass
-from typing import Any
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any
 
 from aiogram import BaseMiddleware
 from aiogram.types import TelegramObject
@@ -17,6 +19,11 @@ from src.infrastructure.external.hh_client import HHClient
 from src.infrastructure.external.superjob_client import SuperJobClient
 from src.infrastructure.external.telegram_parser import TelegramChannelParser
 
+if TYPE_CHECKING:
+    from src.events.career_week.services.cache import CareerWeekCacheService
+    from src.events.career_week.services.registration import CareerWeekRegistrationService
+    from src.events.career_week.services.sheets import GoogleSheetsService
+
 
 @dataclass
 class Container:
@@ -30,17 +37,29 @@ class Container:
     superjob_client: SuperJobClient
     telegram_parser: TelegramChannelParser
     mock_session_repo: MockSessionRepository
+    # Career Week (опциональные, None если CAREER_WEEK_ENABLED=False)
+    cw_sheets: GoogleSheetsService | None = field(default=None)
+    cw_cache: CareerWeekCacheService | None = field(default=None)
+    cw_registration: CareerWeekRegistrationService | None = field(default=None)
 
 
 class ContainerMiddleware(BaseMiddleware):
     """Собирает все зависимости и кладёт в data["container"]."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        cw_sheets: GoogleSheetsService | None = None,
+        cw_cache: CareerWeekCacheService | None = None,
+        cw_registration: CareerWeekRegistrationService | None = None,
+    ) -> None:
         self._ai_service = ClaudeAIService()
         self._hh_client = HHClient()
         self._sj_client = SuperJobClient()
         self._tg_parser = TelegramChannelParser()
         self._mock_sessions = MockSessionRepository()
+        self._cw_sheets = cw_sheets
+        self._cw_cache = cw_cache
+        self._cw_registration = cw_registration
 
     async def __call__(
         self,
@@ -60,6 +79,9 @@ class ContainerMiddleware(BaseMiddleware):
                 superjob_client=self._sj_client,
                 telegram_parser=self._tg_parser,
                 mock_session_repo=self._mock_sessions,
+                cw_sheets=self._cw_sheets,
+                cw_cache=self._cw_cache,
+                cw_registration=self._cw_registration,
             )
             data["container"] = container
             try:

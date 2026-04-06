@@ -44,3 +44,19 @@ class ProfileEditStates(StatesGroup):
     editing_language = State()
     editing_experience = State()
     editing_salary = State()
+
+
+class RoastBookingStates(StatesGroup):
+    choosing_type    = State()
+    choosing_slot    = State()
+    uploading_resume = State()
+
+
+class BroadcastStates(StatesGroup):
+    choosing_audience = State()
+    entering_filter   = State()
+    entering_text     = State()
+    adding_button_text = State()
+    adding_button_url  = State()
+    uploading_file    = State()
+    confirming        = State()
