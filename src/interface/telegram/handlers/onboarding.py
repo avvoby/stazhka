@@ -97,6 +97,20 @@ async def cmd_menu(message: Message, user: object) -> None:
     )
 
 
+@router.message(F.text == "🎓 ВЕСЕННЯЯ НЕДЕЛЯ КАРЬЕРЫ ВШБ 🎓")
+async def handle_career_week_button(message: Message) -> None:
+    from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+    await message.answer(
+        "🎓 <b>Весенняя неделя карьеры ВШБ</b>\n\nНажми кнопку ниже, чтобы начать:",
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[[
+                InlineKeyboardButton(text="Перейти к неделе карьеры →", callback_data="career_week_start")
+            ]]
+        ),
+        parse_mode="HTML",
+    )
+
+
 # ── /start ───────────────────────────────────────────────────────────────────
 
 @router.message(CommandStart())

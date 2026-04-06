@@ -16,7 +16,15 @@
       "Bash(python -c \"import importlib.util; spec = importlib.util.find_spec\\(''alembic''\\); print\\(spec.origin\\)\")",
       "Bash(PYTHONPATH=\"\" POSTGRES_USER=stazka_user POSTGRES_PASSWORD=stazka_password POSTGRES_DB=stazka DATABASE_URL=postgresql+asyncpg://stazka_user:stazka_password@localhost/stazka /opt/anaconda3/bin/alembic revision --autogenerate -m \"initial\")",
       "Bash(ls /Users/egorsnopkov/stazka/*.example /Users/egorsnopkov/stazka/.env*)",
-      "Bash(docker compose:*)"
+      "Bash(docker compose:*)",
+      "Bash(python3 -c \"from src.events.career_week.handlers import main, partners, schedule, roasts, admin; print\\(''OK''\\)\")",
+      "Bash(source .venv/bin/activate)",
+      "Read(//usr/local/bin/**)",
+      "Read(//Applications/Docker.app/**)",
+      "Bash(docker-compose run:*)",
+      "Read(//Users/egorsnopkov/.docker/cli-plugins/**)",
+      "Bash(/usr/local/bin/docker compose:*)",
+      "Bash(python3 -m py_compile src/events/career_week/handlers/main.py src/events/career_week/handlers/partners.py src/events/career_week/handlers/schedule.py src/events/career_week/handlers/roasts.py src/events/career_week/handlers/admin.py src/events/career_week/services/sheets.py src/events/career_week/services/cache.py src/events/career_week/services/registration.py src/interface/telegram/states/forms.py src/interface/telegram/middlewares/container.py src/main.py)"
     ]
   }
 }
