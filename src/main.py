@@ -1,5 +1,4 @@
 import asyncio
-from typing import TYPE_CHECKING
 
 import structlog
 from aiogram import Bot, Dispatcher
@@ -19,11 +18,6 @@ from src.infrastructure.scheduler.tasks import (
 from src.interface.telegram.handlers import ai_features, applications, onboarding, vacancies
 from src.interface.telegram.middlewares.auth import AuthMiddleware
 from src.interface.telegram.middlewares.container import ContainerMiddleware
-
-if TYPE_CHECKING:
-    from src.events.career_week.services.cache import CareerWeekCacheService
-    from src.events.career_week.services.registration import CareerWeekRegistrationService
-    from src.events.career_week.services.sheets import GoogleSheetsService
 
 logger = structlog.get_logger()
 
