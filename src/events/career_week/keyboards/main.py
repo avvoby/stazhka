@@ -40,6 +40,26 @@ def directions_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
+def level_keyboard() -> InlineKeyboardMarkup:
+    """Выбор уровня образования — бакалавриат или магистратура."""
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="🎓 Бакалавриат", callback_data="cw:level:бакалавриат")],
+            [InlineKeyboardButton(text="🎓 Магистратура", callback_data="cw:level:магистратура")],
+        ]
+    )
+
+
+def programs_keyboard(programs: list[str]) -> InlineKeyboardMarkup:
+    """Список образовательных программ + кнопка «Другое»."""
+    rows = [
+        [InlineKeyboardButton(text=prog, callback_data=f"cw:prog:{prog}")]
+        for prog in programs
+    ]
+    rows.append([InlineKeyboardButton(text="✏️ Другое", callback_data="cw:prog:__other__")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
 def courses_keyboard() -> InlineKeyboardMarkup:
     rows = [
         [InlineKeyboardButton(text=course, callback_data=f"cw:course:{course}")]
@@ -48,12 +68,20 @@ def courses_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-def skills_keyboard(selected: list[str]) -> InlineKeyboardMarkup:
+def skills_keyboard(
+    selected: list[str],
+    skills_list: list[str] | None = None,
+) -> InlineKeyboardMarkup:
+    """
+    Мультиселект навыков.
+    skills_list — динамический список из кэша; если None — используется SKILLS_LIST.
+    """
+    source = skills_list if skills_list is not None else SKILLS_LIST
     rows: list[list[InlineKeyboardButton]] = []
     # По 2 навыка в ряд
-    for i in range(0, len(SKILLS_LIST), 2):
+    for i in range(0, len(source), 2):
         row = []
-        for skill in SKILLS_LIST[i:i + 2]:
+        for skill in source[i:i + 2]:
             prefix = "✓ " if skill in selected else ""
             row.append(InlineKeyboardButton(
                 text=f"{prefix}{skill}",

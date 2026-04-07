@@ -37,12 +37,14 @@ class CareerWeekCacheService:
         roast_slots = await sheets.get_roast_slots()
         programs = await sheets.get_programs()
         admins = await sheets.get_admins()
+        skills = await sheets.get_skills()
 
         await self._redis.setex(_PREFIX + "partners", _TTL, json.dumps(partners, ensure_ascii=False))
         await self._redis.setex(_PREFIX + "schedule", _TTL, json.dumps(schedule, ensure_ascii=False))
         await self._redis.setex(_PREFIX + "roast_slots", _TTL, json.dumps(roast_slots, ensure_ascii=False))
         await self._redis.setex(_PREFIX + "programs", _TTL, json.dumps(programs, ensure_ascii=False))
         await self._redis.setex(_PREFIX + "admins", _TTL, json.dumps(admins, ensure_ascii=False))
+        await self._redis.setex(_PREFIX + "skills", _TTL, json.dumps(skills, ensure_ascii=False))
 
         # Инициализируем/обновляем слоты в БД
         if roast_slots:
@@ -71,6 +73,7 @@ class CareerWeekCacheService:
             "schedule": len(schedule),
             "roast_slots": len(roast_slots),
             "programs": len(programs),
+            "skills": len(skills),
         }
         logger.info("CareerWeek кэш синхронизирован: %s", stats)
         return stats
@@ -125,11 +128,33 @@ class CareerWeekCacheService:
             if s.get("id")
         ]
 
-    async def get_programs(self) -> list[str]:
+    async def get_programs(self) -> list[dict]:
+        """Возвращает все программы как list[dict] с ключами name, level."""
         raw = await self._redis.get(_PREFIX + "programs")
         if not raw:
             return []
         return json.loads(raw)  # type: ignore[no-any-return]
+
+    async def get_programs_by_level(self, level: str) -> list[str]:
+        """Возвращает названия программ для указанного уровня образования."""
+        programs = await self.get_programs()
+        level_lower = level.strip().lower()
+        return [p["name"] for p in programs if p.get("level", "") == level_lower]
+
+    _DEFAULT_SKILLS: list[str] = [
+        "Excel", "Python", "SQL", "PowerPoint", "Финмодели",
+        "Figma", "VBA", "R", "Tableau", "Power BI", "Bloomberg", "1С",
+        "Английский B2+", "Английский C1+", "Немецкий",
+        "Французский", "Китайский", "Испанский",
+        "Управление проектами", "Публичные выступления", "Аналитическое мышление",
+    ]
+
+    async def get_skills(self) -> list[str]:
+        raw = await self._redis.get(_PREFIX + "skills")
+        if not raw:
+            return self._DEFAULT_SKILLS
+        data: list[str] = json.loads(raw)
+        return data if data else self._DEFAULT_SKILLS
 
     async def get_admins(self) -> list[int]:
         raw = await self._redis.get(_PREFIX + "admins")
