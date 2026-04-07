@@ -1,166 +1,114 @@
 # Стажка — Telegram-бот ассистент для стажировок
 
 ## Стек
-Python 3.11, aiogram 3.13, FastAPI 0.115, PostgreSQL, SQLAlchemy 2.0,
-Redis, OpenRouter (Claude API), APScheduler 3.x, Docker Compose
+Python 3.11, aiogram 3.x, FastAPI, PostgreSQL, SQLAlchemy 2.0,
+Redis, Claude API через OpenRouter, Docker Compose,
+gspread (Google Sheets API)
 
-## Архитектура
-Clean Architecture, 4 слоя:
-- domain/ — чистые dataclasses, value objects, Protocol-интерфейсы
-- application/ — use cases, services (aggregator, matching)
-- infrastructure/ — SQLAlchemy, AI (OpenRouter), hh.ru / SuperJob / Telethon, Redis, Scheduler
-- interface/ — Telegram handlers, keyboards, middlewares, FSM states
+## Запуск локально
+1. `cp .env.example .env` — заполнить все переменные
+2. `docker compose up -d db redis`
+3. `docker compose --profile migrate up migrations --build`
+4. `docker compose up -d --build bot`
+5. `docker compose logs bot --tail=20`
 
-## Запуск
+## Деплой на сервер
 ```bash
-cd stazka
-docker compose up -d db redis
-docker compose --profile migrate up migrations
+ssh -i ~/.ssh/ssh-key-1773246529615 avvoby@213.165.196.186
+cd stazhka && git pull
 docker compose up -d --build bot
-docker compose logs bot --tail=20
 ```
 
-## Ключевые решения
-- Repository Pattern через Protocol (не ABC)
-- FSM только для многошаговых форм
-- AI-парсинг контекста через asyncio.create_task (не блокирует)
-- Rate limiting через Redis: rl:{user_id}:{action}:{date}
-- ContainerMiddleware создаёт сессию на каждый апдейт
-- Mock-сессии хранятся в Redis (ключ: mock:{user_id}:{session_id}, TTL 2ч)
+## Переменные окружения (все обязательные)
+```
+TELEGRAM_BOT_TOKEN
+DATABASE_URL
+POSTGRES_USER, POSTGRES_DB, POSTGRES_PASSWORD
+OPENROUTER_API_KEY
+REDIS_URL
+CAREER_WEEK_ENABLED        # true/false
+CAREER_WEEK_ADMIN_IDS      # [5645685337]
+GOOGLE_SHEETS_ID
+GOOGLE_SERVICE_ACCOUNT_JSON
+```
+
+## Архитектура (4 слоя Clean Architecture)
+```
+domain/              — entities, value objects, repository protocols
+application/         — use cases, services (AI, matching, aggregator)
+infrastructure/      — SQLAlchemy, Claude/OpenRouter, hh.ru, SuperJob
+interface/           — Telegram handlers, FastAPI, keyboards, FSM states
+events/career_week/  — временный модуль (отключается флагом)
+```
+
+## Основной функционал (v1 + v2)
+- Онбординг (3 шага: специализация, навыки, компании мечты)
+- Поиск вакансий: агрегатор hh.ru + SuperJob + TG (заглушка)
+- AI-матчинг 3 уровня: фильтр → keyword scoring → Claude scoring
+- Трекер заявок: добавление вручную / по ссылке / с карточки
+- Cover letter через Claude (OpenRouter)
+- Mock-интервью: 5 вопросов + разбор + итоговый отчёт
+- Личный кабинет: статистика, расширенный профиль, прогресс
+- Напоминания через APScheduler
+- Feedback система (👎/⭐) — дизлайкнутые не показываются снова
+- /menu — возврат в главное меню из любого состояния
+
+## Модуль Недели карьеры (v2.1)
+Расположение: `src/events/career_week/`
+Включение: `CAREER_WEEK_ENABLED=true` в `.env`
+Отключение: `CAREER_WEEK_ENABLED=false` — кнопка исчезает,
+            весь функционал недоступен, данные сохраняются
+
+**Функционал:**
+- Регистрация участника (5 шагов) + уникальный 5-значный код
+- Компании-партнёры с логотипами (из Google Sheets)
+- Программа мероприятий (3 уровня навигации)
+- Запись на прожарки резюме/собеседований
+- Загрузка резюме (файл PDF/фото или ссылка)
+- Отмена записи, несколько записей разрешены
+- Мои записи
+
+**Админ-панель (/cwadmin):**
+- Доступна только администраторам (telegram_id в листе admins)
+- Суперадмин (всегда): 5645685337
+- Рассылка: всем / по направлению / по курсу / по списку TG ID
+- Обновить контент из Google Sheets
+- Управление администраторами
+- Статистика регистраций
+- Резюме участников (скачивание файлов прямо в чат)
+
+**Google Sheets** (ID: `1cKE-HP2Lj3fMYcBcTCdJ4_F-FX-FWp-AvUEIMZPLb4A`):
+Листы: `partners`, `schedule`, `roast_slots`, `programs`, `skills`,
+       `admins`, `registrations`, `roast_registrations`
 
 ## AI провайдер
-OpenRouter (не прямой Anthropic API)
-- Base URL: https://openrouter.ai/api/v1/chat/completions
+OpenRouter: `https://openrouter.ai/api/v1/chat/completions`
 - Fast model: `anthropic/claude-haiku-3-5-20251001`
 - Quality model: `anthropic/claude-sonnet-4-5`
-- verify=False (корпоративный SSL на ноутбуке разработчика)
-- Клиент: httpx.AsyncClient с заголовком Authorization: Bearer {key}
-
----
-
-## Текущий статус проекта
-
-### v1 — Готово и работает
-- Онбординг (3 шага: специализация, навыки, компании мечты)
-- Трекер заявок (добавление вручную, по ссылке, с карточки поиска)
-- Поиск на hh.ru с фильтром noExperience
-- Cover letter через Claude API
-- Профиль пользователя с редактированием
-- /menu как якорь из любого состояния
-- Feedback система (👎/⭐) с сохранением в vacancy_feedback
-- Команда /start с онбордингом
-
-### v2 Волна 1 — Готово
-- VacancyAggregator: параллельный сбор из hh.ru + SuperJob + TG (заглушка)
-- MatchingService: 3-уровневый матчинг (фильтр → keyword → Claude scoring)
-- ScoredVacancy: скор 0–100 + explanation от Claude
-- Новый формат карточки вакансии с AI-объяснением и 🎯 совпадением
-- Кнопка "Показать ещё 5" (кэш в FSM state)
-- Кнопка "⚙️ Изменить поиск" (быстрый FSM: специализация / навыки / город / сброс)
-- Исключение дизлайкнутых вакансий при следующем поиске
-- Таблица vacancy_feedback в БД (миграция 0002)
-
-### v2 Волна 2 — Код написан, требует проверки
-- Mock-интервью FSM (5 вопросов + разбор каждого ответа + итоговый отчёт)
-  - Сессии в Redis (mock:{user_id}:{session_id})
-  - БАГ в процессе отладки: проверяем slug quality_model
-  - Текущие slugи: fast=`anthropic/claude-haiku-3-5-20251001`, quality=`anthropic/claude-sonnet-4-5`
-- Личный кабинет v2: статистика заявок + воронка + расширенный профиль
-  - Новые поля: gpa, language, experience, expected_salary, notifications_enabled
-  - Миграция 0003
-- APScheduler (3 задачи, timezone=Europe/Moscow):
-  - 09:00 — напоминание перед интервью (next_step_date = завтра)
-  - 10:00 — followup по заявкам в статусе applied > 7 дней
-  - 10:00 — дайджест 3 вакансий под профиль
-
----
+- `verify=False` (корпоративный SSL на ноутбуке разработчика)
 
 ## Миграции БД
-| # | Файл | Содержимое |
-|---|---|---|
-| 0001 | initial | users, user_profiles, vacancies, applications |
-| 0002 | vacancy_feedback | таблица vacancy_feedback |
-| 0003 | extend_user_profile | gpa, language, experience, expected_salary, notifications_enabled |
-| 0004 | career_week | career_week_registrations, career_week_roast_bookings, career_week_slots_cache |
+| # | Содержимое |
+|---|---|
+| 0001 | initial (users, user_profiles, vacancies, applications) |
+| 0002 | vacancy_feedback |
+| 0003 | extend_user_profile (gpa, language, experience, expected_salary, notifications_enabled) |
+| 0004 | career_week_tables (career_week_registrations, career_week_roast_bookings, career_week_slots_cache) |
 
----
+## TG-каналы для парсинга (когда получим ключи)
+```
+pmclub, budujobs, studreru, vrabote_me, vacanciesbest,
+Axenix_Ru, tedo_career, gpbcareer, ozoncamp, magnit_students,
+RSHB_CAREER, b1_careers, chernogolovka_profuture,
+avito_career, pmiru_job
+```
+Получить ключи: https://my.telegram.org → `TELEGRAM_CHANNELS` в `.env`
 
-## Источники вакансий
+## Известные проблемы / TODO
+- TG-парсер: заглушка, нужен `api_id` + `api_hash` (my.telegram.org)
+- SuperJob: клиент написан, нужен API ключ (api.superjob.ru)
+- FastAPI роутеры для Mini App: не реализованы (v3)
+- Деплой: бот на Yandex Cloud VM `213.165.196.186`
 
-**hh.ru** — активен (src/infrastructure/external/hh_client.py)
-- per_page=50, experience=noExperience, area=1 (Москва)
-
-**SuperJob** — написан, не активен (нет API ключа)
-- src/infrastructure/external/superjob_client.py
-- Получить ключ: https://api.superjob.ru
-
-**Telegram-каналы** — заглушка (нет api_id/api_hash)
-- src/infrastructure/external/telegram_parser.py
-- Получить ключи: https://my.telegram.org
-- Каналы (добавить в .env TELEGRAM_CHANNELS):
-  pmclub, budujobs, studreru, vrabote_me, vacanciesbest,
-  Axenix_Ru, tedo_career, gpbcareer, ozoncamp, magnit_students,
-  RSHB_CAREER, b1_careers, chernogolovka_profuture, avito_career, pmiru_job
-
-**Веб-сайты** (не реализованы, v3):
-- axenix.tech/internship
-- intern.t2.ru
-- groundupcareer.ru
-
----
-
-## Известные проблемы
-1. Mock-интервью: отлаживаем slug quality_model на OpenRouter
-2. Telegram parser: заглушка, возвращает [] (нет api_id/api_hash)
-3. SuperJob: клиент написан, не активен (нет API ключа)
-
----
-
----
-
-## Модуль Весенней недели карьеры (v2.1)
-
-### Расположение
-src/events/career_week/
-
-### Включение/выключение
-CAREER_WEEK_ENABLED=true/false в .env
-При false — кнопка не показывается, все хендлеры недоступны
-
-### Структура
-- handlers/main.py — регистрация, главное меню недели
-- handlers/partners.py — компании-партнёры
-- handlers/schedule.py — программа мероприятий
-- handlers/roasts.py — запись на прожарки, мои записи, отмена
-- handlers/admin.py — админ-панель (/cwadmin)
-- services/sheets.py — Google Sheets интеграция
-- services/registration.py — регистрация, генерация кода, бронирование
-- services/cache.py — Redis кэш (TTL 24ч), sync_from_sheets()
-
-### Таблицы БД
-career_week_registrations, career_week_roast_bookings,
-career_week_slots_cache (миграция 0004)
-
-### Google Sheets
-ID: 1cKE-HP2Lj3fMYcBcTCdJ4_F-FX-FWp-AvUEIMZPLb4A
-Листы: partners, schedule, roast_slots, programs,
-       admins, registrations, roast_registrations
-
-### Первый администратор
-telegram_id: 5645685337
-
-### Отключение после мероприятия
-Поставить CAREER_WEEK_ENABLED=false и перезапустить бота.
-Все данные сохраняются в БД и Google Sheets.
-
----
-
-## Нереализовано (v3)
-- Голосовые сообщения в Mock-интервью (Whisper API)
-- Telegram-каналы парсинг (нужен api_id + api_hash)
-- SuperJob интеграция (нужен API ключ)
-- FastAPI routers для Mini App
-- Деплой на VPS (бот работает только локально)
-- GitHub репозиторий
-- Монетизация / платный tier
-- Полные unit тесты
+## GitHub
+https://github.com/avvoby/stazhka
