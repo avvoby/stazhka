@@ -100,7 +100,12 @@ class GoogleSheetsService:
             logger.exception("Ошибка чтения листа roast_slots")
             raise
 
-    async def get_programs(self) -> list[str]:
+    async def get_programs(self) -> list[dict]:
+        """
+        Читает лист "programs".
+        Ожидаемые колонки: name, level (бакалавриат / магистратура).
+        Возвращает list[dict] с ключами name, level.
+        """
         if not self._enabled:
             return []
         try:
@@ -109,9 +114,31 @@ class GoogleSheetsService:
                 asyncio.to_thread(ws.get_all_records),
                 timeout=_TIMEOUT,
             )
-            return [str(r["name"]) for r in rows if r.get("name")]
+            return [
+                {"name": str(r["name"]), "level": str(r.get("level", "")).strip().lower()}
+                for r in rows
+                if r.get("name")
+            ]
         except Exception:
             logger.exception("Ошибка чтения листа programs")
+            raise
+
+    async def get_skills(self) -> list[str]:
+        """
+        Читает лист "skills", колонку "name".
+        Возвращает список строк.
+        """
+        if not self._enabled:
+            return []
+        try:
+            ws = await self._get_sheet("skills")
+            rows: list[dict] = await asyncio.wait_for(
+                asyncio.to_thread(ws.get_all_records),
+                timeout=_TIMEOUT,
+            )
+            return [str(r["name"]) for r in rows if r.get("name")]
+        except Exception:
+            logger.exception("Ошибка чтения листа skills")
             raise
 
     async def get_admins(self) -> list[int]:
@@ -172,14 +199,23 @@ class GoogleSheetsService:
             return
         try:
             ws = await self._get_sheet("roast_registrations")
-            resume = booking.resume_url or ("файл в TG" if booking.resume_file_id else "")
+            if booking.resume_file_id:
+                resume_type = "telegram_file"
+                resume_value = f"tg://file/{booking.resume_file_id}"
+            elif booking.resume_url:
+                resume_type = "url"
+                resume_value = booking.resume_url
+            else:
+                resume_type = "none"
+                resume_value = "не загружено"
             row = [
                 str(booking.id),
                 user_code,
                 booking.slot_id,
                 booking.slot_type,
                 booking.direction,
-                resume,
+                resume_type,
+                resume_value,
                 booking.booked_at.strftime("%Y-%m-%d %H:%M:%S"),
                 "",  # cancelled_at пустой
             ]
