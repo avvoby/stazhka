@@ -1,4 +1,5 @@
 import asyncio
+from typing import TYPE_CHECKING
 
 import structlog
 from aiogram import Bot, Dispatcher
@@ -19,14 +20,19 @@ from src.interface.telegram.handlers import ai_features, applications, onboardin
 from src.interface.telegram.middlewares.auth import AuthMiddleware
 from src.interface.telegram.middlewares.container import ContainerMiddleware
 
+if TYPE_CHECKING:
+    from src.events.career_week.services.cache import CareerWeekCacheService
+    from src.events.career_week.services.registration import CareerWeekRegistrationService
+    from src.events.career_week.services.sheets import GoogleSheetsService
+
 logger = structlog.get_logger()
 
 
 def build_dispatcher(
     storage: RedisStorage,
-    cw_sheets: GoogleSheetsService | None = None,
-    cw_cache: CareerWeekCacheService | None = None,
-    cw_registration: CareerWeekRegistrationService | None = None,
+    cw_sheets: "GoogleSheetsService | None" = None,
+    cw_cache: "CareerWeekCacheService | None" = None,
+    cw_registration: "CareerWeekRegistrationService | None" = None,
 ) -> Dispatcher:
     dp = Dispatcher(storage=storage)
 
