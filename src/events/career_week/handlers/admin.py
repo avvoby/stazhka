@@ -7,7 +7,7 @@ from datetime import datetime
 from functools import wraps
 from typing import Any, Callable
 
-from aiogram import F, Router
+from aiogram import Bot, F, Router
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import (
@@ -73,6 +73,7 @@ def _admin_menu_keyboard() -> InlineKeyboardMarkup:
             [InlineKeyboardButton(text="🔄 Обновить контент",       callback_data="cw:admin:update")],
             [InlineKeyboardButton(text="👥 Управление админами",    callback_data="cw:admin:admins")],
             [InlineKeyboardButton(text="📊 Статистика",             callback_data="cw:admin:stats")],
+            [InlineKeyboardButton(text="📄 Резюме участников",      callback_data="cw:admin:resumes")],
         ]
     )
 
@@ -756,6 +757,143 @@ async def handle_stats(
         reply_markup=_back_to_admin_keyboard(),
         parse_mode="HTML",
     )
+
+
+# ── Резюме участников ─────────────────────────────────────────────────────────
+
+_RESUMES_PAGE_SIZE = 10
+
+
+def _resumes_keyboard(bookings: list, offset: int, total: int) -> InlineKeyboardMarkup:
+    rows = []
+    for b in bookings:
+        date_str = b.booked_at.strftime("%d.%m") if b.booked_at else ""
+        label = f"Код {b.user_code} · {b.direction} · слот {b.slot_id} ({date_str})"
+        rows.append([InlineKeyboardButton(
+            text=label,
+            callback_data=f"cw:admin:get_resume:{b.id}",
+        )])
+
+    nav = []
+    if offset > 0:
+        nav.append(InlineKeyboardButton(text="← Пред.", callback_data=f"cw:admin:resumes:{offset - _RESUMES_PAGE_SIZE}"))
+    if offset + _RESUMES_PAGE_SIZE < total:
+        nav.append(InlineKeyboardButton(text="След. →", callback_data=f"cw:admin:resumes:{offset + _RESUMES_PAGE_SIZE}"))
+    if nav:
+        rows.append(nav)
+
+    rows.append([InlineKeyboardButton(text="← Назад", callback_data="cw:admin:menu")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+async def _fetch_resumes(session: Any, offset: int) -> tuple[list, int]:
+    count_row = await session.execute(
+        text("""
+            SELECT COUNT(*)
+            FROM career_week_roast_bookings b
+            JOIN career_week_registrations r ON r.user_id = b.user_id
+            WHERE b.resume_file_id IS NOT NULL
+              AND b.cancelled_at IS NULL
+        """)
+    )
+    total: int = count_row.scalar() or 0
+
+    rows = await session.execute(
+        text("""
+            SELECT b.id, b.slot_id, b.direction, b.resume_file_id, b.resume_url,
+                   b.booked_at,
+                   r.code AS user_code
+            FROM career_week_roast_bookings b
+            JOIN career_week_registrations r ON r.user_id = b.user_id
+            WHERE b.resume_file_id IS NOT NULL
+              AND b.cancelled_at IS NULL
+            ORDER BY b.booked_at DESC
+            LIMIT :lim OFFSET :off
+        """),
+        {"lim": _RESUMES_PAGE_SIZE, "off": offset},
+    )
+    return rows.fetchall(), total
+
+
+@router.callback_query(F.data == "cw:admin:resumes")
+@cw_admin_only
+async def handle_admin_resumes(
+    callback: CallbackQuery,
+    container: Container,
+) -> None:
+    await callback.answer()
+    bookings, total = await _fetch_resumes(container.session, 0)
+
+    if not bookings:
+        await callback.message.answer(  # type: ignore[union-attr]
+            "📄 <b>Резюме участников</b>\n\nРезюме пока не загружено ни одним участником.",
+            reply_markup=_back_to_admin_keyboard(),
+            parse_mode="HTML",
+        )
+        return
+
+    await callback.message.answer(  # type: ignore[union-attr]
+        f"📄 <b>Резюме участников</b>\n\nНайдено: {total}. Выбери запись:",
+        reply_markup=_resumes_keyboard(bookings, 0, total),
+        parse_mode="HTML",
+    )
+
+
+@router.callback_query(F.data.startswith("cw:admin:resumes:"))
+@cw_admin_only
+async def handle_admin_resumes_page(
+    callback: CallbackQuery,
+    container: Container,
+) -> None:
+    await callback.answer()
+    offset = int((callback.data or "").split("cw:admin:resumes:", 1)[1])
+    bookings, total = await _fetch_resumes(container.session, offset)
+
+    await callback.message.edit_reply_markup(  # type: ignore[union-attr]
+        reply_markup=_resumes_keyboard(bookings, offset, total)
+    )
+
+
+@router.callback_query(F.data.startswith("cw:admin:get_resume:"))
+@cw_admin_only
+async def handle_get_resume(
+    callback: CallbackQuery,
+    container: Container,
+    bot: Bot,
+) -> None:
+    await callback.answer()
+    booking_id = (callback.data or "").split("cw:admin:get_resume:", 1)[1]
+
+    row = await container.session.execute(
+        text("""
+            SELECT b.resume_file_id, b.resume_url, b.direction,
+                   r.code AS user_code
+            FROM career_week_roast_bookings b
+            JOIN career_week_registrations r ON r.user_id = b.user_id
+            WHERE b.id = :bid
+        """),
+        {"bid": booking_id},
+    )
+    booking = row.fetchone()
+
+    if not booking:
+        await callback.message.answer("Запись не найдена.")  # type: ignore[union-attr]
+        return
+
+    caption = f"📄 Резюме\nКод: {booking.user_code} · {booking.direction}"
+
+    if booking.resume_file_id:
+        await bot.send_document(
+            chat_id=callback.from_user.id,  # type: ignore[union-attr]
+            document=booking.resume_file_id,
+            caption=caption,
+        )
+    elif booking.resume_url:
+        await callback.message.answer(  # type: ignore[union-attr]
+            f"{caption}\n\n🔗 {booking.resume_url}",
+        )
+    else:
+        await callback.message.answer("Резюме не загружено.")  # type: ignore[union-attr]
 
 
 # ── Вспомогательные функции ───────────────────────────────────────────────────

@@ -26,7 +26,9 @@
       "Bash(/usr/local/bin/docker compose:*)",
       "Bash(python3 -m py_compile src/events/career_week/handlers/main.py src/events/career_week/handlers/partners.py src/events/career_week/handlers/schedule.py src/events/career_week/handlers/roasts.py src/events/career_week/handlers/admin.py src/events/career_week/services/sheets.py src/events/career_week/services/cache.py src/events/career_week/services/registration.py src/interface/telegram/states/forms.py src/interface/telegram/middlewares/container.py src/main.py)",
       "Bash(python3 -m py_compile src/events/career_week/handlers/main.py src/events/career_week/services/cache.py src/events/career_week/services/sheets.py src/events/career_week/keyboards/main.py)",
-      "Bash(python3 -m py_compile src/events/career_week/handlers/main.py src/events/career_week/handlers/partners.py src/events/career_week/services/sheets.py src/events/career_week/services/cache.py src/events/career_week/keyboards/main.py)"
+      "Bash(python3 -m py_compile src/events/career_week/handlers/main.py src/events/career_week/handlers/partners.py src/events/career_week/services/sheets.py src/events/career_week/services/cache.py src/events/career_week/keyboards/main.py)",
+      "Bash(python3 -m py_compile src/events/career_week/handlers/admin.py)",
+      "Bash(python3 -m py_compile src/events/career_week/services/sheets.py)"
     ]
   }
 }

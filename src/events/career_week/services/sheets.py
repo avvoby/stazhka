@@ -201,7 +201,7 @@ class GoogleSheetsService:
             ws = await self._get_sheet("roast_registrations")
             if booking.resume_file_id:
                 resume_type = "telegram_file"
-                resume_value = f"tg://file/{booking.resume_file_id}"
+                resume_value = booking.resume_file_id
             elif booking.resume_url:
                 resume_type = "url"
                 resume_value = booking.resume_url
