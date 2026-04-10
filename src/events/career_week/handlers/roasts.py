@@ -55,17 +55,18 @@ def _slots_keyboard(slots: list[RoastSlot]) -> InlineKeyboardMarkup:
             text = f"❌ {label} · мест нет"
             cb = "cw:slot_full"
         rows.append([InlineKeyboardButton(text=text, callback_data=cb)])
-    rows.append([InlineKeyboardButton(text="← Назад", callback_data="cw:roasts")])
+    rows.append([InlineKeyboardButton(text="← Назад",        callback_data="cw:roasts")])
+    rows.append([InlineKeyboardButton(text="← Главное меню", callback_data="cw:menu")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def _resume_upload_keyboard_mandatory() -> InlineKeyboardMarkup:
-    """Клавиатура для fast_track — без кнопки Пропустить."""
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="📎 Загрузить PDF",   callback_data="cw:roast_resume_hint")],
-            [InlineKeyboardButton(text="🖼 Загрузить фото",  callback_data="cw:roast_resume_hint")],
-            [InlineKeyboardButton(text="🔗 Вставить ссылку", callback_data="cw:roast_resume_hint")],
+            [InlineKeyboardButton(text="📎 Загрузить PDF",   callback_data="cw:resume_hint_file")],
+            [InlineKeyboardButton(text="🖼 Загрузить фото",  callback_data="cw:resume_hint_file")],
+            [InlineKeyboardButton(text="🔗 Вставить ссылку", callback_data="cw:resume_hint_link")],
+            [InlineKeyboardButton(text="← Главное меню",     callback_data="cw:menu")],
         ]
     )
 
@@ -100,7 +101,8 @@ def _cancel_confirm_keyboard(booking_id: str) -> InlineKeyboardMarkup:
             [
                 InlineKeyboardButton(text="✅ Да, отменить",  callback_data=f"cw:confirm_cancel:{booking_id}"),
                 InlineKeyboardButton(text="← Нет, оставить", callback_data="cw:my_bookings"),
-            ]
+            ],
+            [InlineKeyboardButton(text="← Главное меню", callback_data="cw:menu")],
         ]
     )
 
@@ -287,11 +289,26 @@ async def handle_resume_link(
     await _complete_booking(message, state, user, container, resume_url=text)
 
 
-# ── Подсказка для fast_track (информационные кнопки) ─────────────────────────
+# ── Подсказки при загрузке резюме ────────────────────────────────────────────
 
-@router.callback_query(F.data == "cw:roast_resume_hint")
-async def handle_resume_hint(callback: CallbackQuery) -> None:
-    await callback.answer("Отправь файл или ссылку прямо в чат", show_alert=False)
+@router.callback_query(F.data == "cw:resume_hint_file", RoastBookingStates.uploading_resume)
+async def handle_resume_hint_file(callback: CallbackQuery) -> None:
+    await callback.answer()
+    await callback.message.answer(  # type: ignore[union-attr]
+        "📎 Отправь файл резюме следующим сообщением.\n\n"
+        "Просто прикрепи файл или фото и отправь — "
+        "я его сохраню и подтвержу запись."
+    )
+
+
+@router.callback_query(F.data == "cw:resume_hint_link", RoastBookingStates.uploading_resume)
+async def handle_resume_hint_link(callback: CallbackQuery) -> None:
+    await callback.answer()
+    await callback.message.answer(  # type: ignore[union-attr]
+        "🔗 Отправь ссылку на резюме следующим сообщением.\n\n"
+        "Подойдёт ссылка на HH.ru или Google Drive.\n"
+        "Убедись что доступ открыт."
+    )
 
 
 # ── Пропустить резюме ─────────────────────────────────────────────────────────
