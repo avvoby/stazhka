@@ -18,12 +18,13 @@ class CareerWeekRegistration:
 @dataclass
 class RoastSlot:
     id: str
-    type: str              # "resume" | "interview"
+    type: str              # "resume" | "interview" | "fast_track"
     date: str
     time: str
     direction: str         # Консалтинг / Бигтех / Финансы и т.д.
     capacity: int
     registrations_count: int
+    company: str | None = None  # для fast_track слотов
 
     @property
     def is_available(self) -> bool:

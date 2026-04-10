@@ -123,6 +123,7 @@ class CareerWeekCacheService:
                 direction=str(s.get("direction", "")),
                 capacity=int(s.get("capacity", 0)),
                 registrations_count=counts.get(str(s.get("id", "")), 0),
+                company=str(s["company"]) if s.get("company") else None,
             )
             for s in slots_data
             if s.get("id")
@@ -167,3 +168,11 @@ class CareerWeekCacheService:
             return True
         admins = await self.get_admins()
         return telegram_id in admins
+
+    # ── Waitlist ──────────────────────────────────────────────────────────────
+
+    async def check_waitlist(self, user_id: str) -> bool:
+        return bool(await self._redis.get(f"waitlist:{user_id}"))
+
+    async def add_to_waitlist(self, user_id: str) -> None:
+        await self._redis.setex(f"waitlist:{user_id}", 30 * 24 * 3600, "1")

@@ -10,9 +10,13 @@ from src.interface.telegram.middlewares.container import Container
 from src.interface.telegram.states.forms import OnboardingStates
 
 
-# Колбэки онбординга — пропускаем без проверки профиля
-_ONBOARDING_CALLBACKS = {"privacy:accept", "skills:done"}
-_ONBOARDING_PREFIXES = ("spec:", "course:", "skill:", "edit:")
+# Колбэки, которые пропускаем без проверки профиля
+_ONBOARDING_CALLBACKS = {
+    "privacy:accept", "skills:done",
+    "onboard_accept",
+    "career_week_start", "waitlist_menu", "waitlist_join", "waitlist_back_main",
+}
+_ONBOARDING_PREFIXES = ("spec:", "course:", "skill:", "edit:", "cw:")
 
 
 class AuthMiddleware(BaseMiddleware):
