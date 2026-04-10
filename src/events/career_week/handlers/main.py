@@ -2,6 +2,8 @@
 Главный handler модуля Весенней недели карьеры ВШБ.
 Регистрация участника (4 шага) + главное меню недели.
 """
+import asyncio
+
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -18,6 +20,7 @@ from src.events.career_week.keyboards.main import (
     level_keyboard,
     programs_keyboard,
     skills_keyboard,
+    waitlist_inline_keyboard,
 )
 from src.events.career_week.services.registration import CareerWeekRegistrationService
 from src.interface.telegram.keyboards.main import main_menu_keyboard
@@ -298,13 +301,27 @@ async def handle_skills_done(
 
     await state.clear()
 
-    await callback.message.answer(  # type: ignore[union-attr]
+    msg = callback.message  # type: ignore[union-attr]
+
+    await msg.answer(
         f"✅ <b>Ты зарегистрирован на Весеннюю неделю карьеры ВШБ!</b>\n\n"
         f"🎫 Твой код участника: <b>{reg.code}</b>\n\n"
         f"Сохрани этот код — он понадобится\n"
         f"для получения баллов на мероприятии.\n\n"
         f"Что хочешь сделать?",
         reply_markup=career_week_menu_keyboard(),
+        parse_mode="HTML",
+    )
+
+    await asyncio.sleep(1)
+    await msg.answer(
+        "💡 <b>Кстати, знаешь что?</b>\n\n"
+        "Стажка — это не только Неделя карьеры. "
+        "Мы делаем продукт который поможет тебе "
+        "находить стажировки и проходить отбор "
+        "в компании мечты 🎯\n\n"
+        "Хочешь узнать первым когда запустимся?",
+        reply_markup=waitlist_inline_keyboard(),
         parse_mode="HTML",
     )
 

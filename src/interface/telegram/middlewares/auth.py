@@ -57,10 +57,24 @@ class AuthMiddleware(BaseMiddleware):
         )
         data["user"] = user
 
-        # Пропускаем /start и колбэки онбординга без проверки профиля
+        # Пропускаем /start без проверки профиля
         if message and message.text and message.text.startswith("/start"):
             return await handler(event, data)
 
+        # Пропускаем career_week и waitlist колбэки без проверки профиля
+        cb_data = callback.data if callback else None
+        if cb_data and (
+            cb_data.startswith("cw:") or
+            cb_data.startswith("cw_") or
+            cb_data in {
+                "career_week_start",
+                "waitlist_menu", "waitlist_join", "waitlist_back_main",
+                "onboard_accept",
+            }
+        ):
+            return await handler(event, data)
+
+        # Пропускаем стандартные колбэки онбординга
         if callback and callback.data and self._is_onboarding_callback(callback.data):
             return await handler(event, data)
 
