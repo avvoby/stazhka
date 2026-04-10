@@ -43,6 +43,7 @@ def _partner_detail_keyboard(roast_direction: str) -> InlineKeyboardMarkup:
                 callback_data=f"cw:roasts:dir:{roast_direction}",
             )],
             [InlineKeyboardButton(text="← К списку партнёров", callback_data="cw:partners")],
+            [InlineKeyboardButton(text="← Главное меню",        callback_data="cw:menu")],
         ]
     )
 

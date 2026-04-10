@@ -36,7 +36,9 @@
       "Bash(python3 -m py_compile src/events/career_week/services/cache.py)",
       "Bash(python3 -m py_compile src/events/career_week/handlers/roasts.py)",
       "Bash(python3 -m py_compile src/events/career_week/keyboards/main.py)",
-      "Bash(python3 -m py_compile src/events/career_week/handlers/main.py)"
+      "Bash(python3 -m py_compile src/events/career_week/handlers/main.py)",
+      "Bash(python3 -m py_compile src/events/career_week/handlers/schedule.py)",
+      "Bash(python3 -m py_compile src/events/career_week/handlers/partners.py)"
     ]
   }
 }

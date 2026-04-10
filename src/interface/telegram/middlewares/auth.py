@@ -57,11 +57,11 @@ class AuthMiddleware(BaseMiddleware):
         )
         data["user"] = user
 
-        # Пропускаем /start без проверки профиля
-        if message and message.text and message.text.startswith("/start"):
+        # 1. Все slash-команды проходят без проверки профиля
+        if message and message.text and message.text.startswith("/"):
             return await handler(event, data)
 
-        # Пропускаем career_week и waitlist колбэки без проверки профиля
+        # 2. CW и waitlist колбэки проходят без проверки профиля
         cb_data = callback.data if callback else None
         if cb_data and (
             cb_data.startswith("cw:") or
@@ -74,18 +74,19 @@ class AuthMiddleware(BaseMiddleware):
         ):
             return await handler(event, data)
 
-        # Пропускаем стандартные колбэки онбординга
+        # 3. Стандартные колбэки онбординга
         if callback and callback.data and self._is_onboarding_callback(callback.data):
             return await handler(event, data)
 
-        # Пропускаем если пользователь уже внутри FSM-флоу онбординга
+        # 4. Любой активный FSM state — пользователь в процессе заполнения формы
+        #    Это покрывает photo/document в RoastBookingStates, BroadcastStates и т.д.
         fsm: FSMContext | None = data.get("state")
         if fsm is not None:
             current = await fsm.get_state()
-            if current is not None and current.startswith("OnboardingStates:"):
+            if current is not None:
                 return await handler(event, data)
 
-        # Онбординг не пройден — у пользователя нет профиля с контекстом
+        # 5. Профиль не заполнен — блокируем
         if not user.profile or not user.profile.about:
             if message:
                 await message.answer("Сначала напиши /start, чтобы пройти регистрацию.")

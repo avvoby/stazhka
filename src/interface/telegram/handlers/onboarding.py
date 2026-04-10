@@ -586,6 +586,7 @@ async def handle_waitlist_menu(callback: CallbackQuery) -> None:
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="📋 ЛИСТ ОЖИДАНИЯ", callback_data="waitlist_join")],
             [InlineKeyboardButton(text="🔍 ПОДРОБНЕЕ О СТАЖКЕ", url="https://stazhka.ru")],
+            [InlineKeyboardButton(text="← Назад", callback_data="waitlist_back_main")],
         ]),
         parse_mode="HTML",
     )

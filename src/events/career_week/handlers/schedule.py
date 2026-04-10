@@ -31,6 +31,7 @@ def _day_events_keyboard(day: str, events: list[dict]) -> InlineKeyboardMarkup:
         for idx, e in enumerate(events)
     ]
     rows.append([InlineKeyboardButton(text="← К выбору дня", callback_data="cw:schedule")])
+    rows.append([InlineKeyboardButton(text="← Главное меню", callback_data="cw:menu")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
@@ -38,7 +39,8 @@ def _event_detail_keyboard(day: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="← К программе дня", callback_data=f"cw_day:{day}")],
-            [InlineKeyboardButton(text="← К выбору дня", callback_data="cw:schedule")],
+            [InlineKeyboardButton(text="← К выбору дня",    callback_data="cw:schedule")],
+            [InlineKeyboardButton(text="← Главное меню",    callback_data="cw:menu")],
         ]
     )
 
