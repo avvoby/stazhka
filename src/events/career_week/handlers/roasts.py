@@ -81,11 +81,8 @@ def _resume_keyboard() -> InlineKeyboardMarkup:
 
 
 def _resume_upload_keyboard() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="Пропустить →", callback_data="cw:roast_skip")],
-        ]
-    )
+    # Оставлен для обратной совместимости — не используется в текущем флоу
+    return _resume_upload_keyboard_mandatory()
 
 
 def _after_booking_keyboard() -> InlineKeyboardMarkup:
@@ -281,18 +278,11 @@ async def handle_resume_link(
 ) -> None:
     text = (message.text or "").strip()
     if not text.startswith("http"):
-        fsm_data = await state.get_data()
-        if fsm_data.get("is_fast_track"):
-            await message.answer(
-                "Для быстрого отбора резюме обязательно.\n"
-                "Загрузи файл или вставь ссылку.",
-                reply_markup=_resume_upload_keyboard_mandatory(),
-            )
-        else:
-            await message.answer(
-                "Пожалуйста, отправь корректную ссылку (начинается с http...) "
-                "или нажми «Пропустить»."
-            )
+        await message.answer(
+            "Резюме обязательно для записи на прожарку.\n"
+            "Загрузи файл или вставь ссылку (начинается с http...).",
+            reply_markup=_resume_upload_keyboard_mandatory(),
+        )
         return
     await _complete_booking(message, state, user, container, resume_url=text)
 
@@ -313,15 +303,10 @@ async def handle_resume_skip(
     user: User,
     container: Container,
 ) -> None:
-    fsm_data = await state.get_data()
-    if fsm_data.get("is_fast_track"):
-        await callback.answer(
-            "Для быстрого отбора резюме обязательно.",
-            show_alert=True,
-        )
-        return
-    await callback.answer()
-    await _complete_booking(callback.message, state, user, container)  # type: ignore[arg-type]
+    await callback.answer(
+        "Резюме обязательно для записи на прожарку.\nЗагрузи файл или вставь ссылку.",
+        show_alert=True,
+    )
 
 
 # ── Завершение бронирования ───────────────────────────────────────────────────

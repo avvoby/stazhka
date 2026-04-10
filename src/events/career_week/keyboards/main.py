@@ -98,11 +98,21 @@ def skills_keyboard(
 def career_week_menu_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="📋 Программа мероприятий", callback_data="cw:schedule")],
-            [InlineKeyboardButton(text="🏢 Компании-партнёры",     callback_data="cw:partners")],
-            [InlineKeyboardButton(text="🔥 Записаться на прожарку", callback_data="cw:roasts")],
-            [InlineKeyboardButton(text="📝 Мои записи",            callback_data="cw:my_bookings")],
-            [InlineKeyboardButton(text="← Главное меню Стажки",   callback_data="cw:exit")],
+            [InlineKeyboardButton(text="📋 Программа мероприятий",     callback_data="cw:schedule")],
+            [InlineKeyboardButton(text="🏢 Компании-партнёры",         callback_data="cw:partners")],
+            [InlineKeyboardButton(text="🔥 Записаться на прожарку",     callback_data="cw:roasts")],
+            [InlineKeyboardButton(text="📝 Мои записи",                callback_data="cw:my_bookings")],
+            [InlineKeyboardButton(text="🚀 Попасть в компанию мечты",  callback_data="waitlist_menu")],
+            [InlineKeyboardButton(text="← Главное меню",               callback_data="cw:exit")],
+        ]
+    )
+
+
+def waitlist_inline_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="📋 Да, запишите меня!", callback_data="waitlist_join")],
+            [InlineKeyboardButton(text="🔍 Узнать подробнее",  url="https://stazhka.ru")],
         ]
     )
 
