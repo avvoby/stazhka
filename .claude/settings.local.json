@@ -28,7 +28,13 @@
       "Bash(python3 -m py_compile src/events/career_week/handlers/main.py src/events/career_week/services/cache.py src/events/career_week/services/sheets.py src/events/career_week/keyboards/main.py)",
       "Bash(python3 -m py_compile src/events/career_week/handlers/main.py src/events/career_week/handlers/partners.py src/events/career_week/services/sheets.py src/events/career_week/services/cache.py src/events/career_week/keyboards/main.py)",
       "Bash(python3 -m py_compile src/events/career_week/handlers/admin.py)",
-      "Bash(python3 -m py_compile src/events/career_week/services/sheets.py)"
+      "Bash(python3 -m py_compile src/events/career_week/services/sheets.py)",
+      "Bash(python3 -m py_compile src/interface/telegram/keyboards/main.py)",
+      "Bash(python3 -m py_compile src/interface/telegram/middlewares/auth.py)",
+      "Bash(python3 -m py_compile src/interface/telegram/handlers/onboarding.py)",
+      "Bash(python3 -m py_compile src/events/career_week/models.py)",
+      "Bash(python3 -m py_compile src/events/career_week/services/cache.py)",
+      "Bash(python3 -m py_compile src/events/career_week/handlers/roasts.py)"
     ]
   }
 }

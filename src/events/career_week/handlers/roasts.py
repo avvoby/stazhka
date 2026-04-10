@@ -22,8 +22,9 @@ logger = logging.getLogger(__name__)
 router = Router(name="career_week_roasts")
 
 _TYPE_LABELS = {
-    "resume":    "📄 Прожарка резюме",
-    "interview": "🎤 Прожарка собеседования",
+    "resume":     "📄 Прожарка резюме",
+    "interview":  "🎤 Прожарка собеседования",
+    "fast_track": "⚡ Быстрый отбор на вакансию",
 }
 
 
@@ -32,9 +33,10 @@ _TYPE_LABELS = {
 def _type_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="📄 Прожарка резюме",         callback_data="cw:roast_type:resume")],
-            [InlineKeyboardButton(text="🎤 Прожарка собеседования",   callback_data="cw:roast_type:interview")],
-            [InlineKeyboardButton(text="← Назад",                     callback_data="cw:menu")],
+            [InlineKeyboardButton(text="📄 Прожарка резюме",           callback_data="cw:roast_type:resume")],
+            [InlineKeyboardButton(text="🎤 Прожарка собеседования",     callback_data="cw:roast_type:interview")],
+            [InlineKeyboardButton(text="⚡ Быстрый отбор на вакансию",  callback_data="cw:roast_type:fast_track")],
+            [InlineKeyboardButton(text="← Назад",                       callback_data="cw:menu")],
         ]
     )
 
@@ -42,15 +44,30 @@ def _type_keyboard() -> InlineKeyboardMarkup:
 def _slots_keyboard(slots: list[RoastSlot]) -> InlineKeyboardMarkup:
     rows = []
     for slot in slots:
+        if slot.type == "fast_track" and slot.company:
+            label = f"⚡ {slot.company} · {slot.date}, {slot.time} · {slot.direction}"
+        else:
+            label = f"📅 {slot.date}, {slot.time} · {slot.direction}"
         if slot.is_available:
-            text = f"📅 {slot.date}, {slot.time} · {slot.direction} · {slot.available_seats} места"
+            text = f"{label} · {slot.available_seats} места"
             cb = f"cw:slot:{slot.id}"
         else:
-            text = f"❌ {slot.date}, {slot.time} · {slot.direction} · мест нет"
+            text = f"❌ {label} · мест нет"
             cb = "cw:slot_full"
         rows.append([InlineKeyboardButton(text=text, callback_data=cb)])
     rows.append([InlineKeyboardButton(text="← Назад", callback_data="cw:roasts")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def _resume_upload_keyboard_mandatory() -> InlineKeyboardMarkup:
+    """Клавиатура для fast_track — без кнопки Пропустить."""
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="📎 Загрузить PDF",   callback_data="cw:roast_resume_hint")],
+            [InlineKeyboardButton(text="🖼 Загрузить фото",  callback_data="cw:roast_resume_hint")],
+            [InlineKeyboardButton(text="🔗 Вставить ссылку", callback_data="cw:roast_resume_hint")],
+        ]
+    )
 
 
 def _resume_keyboard() -> InlineKeyboardMarkup:
@@ -144,8 +161,13 @@ async def handle_roast_type(
     await state.update_data(slot_type=slot_type)
     await state.set_state(RoastBookingStates.choosing_slot)
 
+    if slot_type == "fast_track":
+        header = f"<b>{type_label}</b>\n⚠️ Резюме обязательно.\n\nВыбери вакансию:"
+    else:
+        header = f"<b>{type_label}</b>\nВыбери удобный слот:"
+
     await callback.message.answer(  # type: ignore[union-attr]
-        f"<b>{type_label}</b>\nВыбери удобный слот:",
+        header,
         reply_markup=_slots_keyboard(slots),
         parse_mode="HTML",
     )
@@ -183,23 +205,37 @@ async def handle_slot_select(
         await state.clear()
         return
 
+    is_fast_track = slot.type == "fast_track"
     await state.update_data(
         slot_id=slot_id,
         slot_date=slot.date,
         slot_time=slot.time,
         slot_direction=slot.direction,
+        slot_company=slot.company or "",
+        is_fast_track=is_fast_track,
     )
     await state.set_state(RoastBookingStates.uploading_resume)
 
-    await callback.message.answer(  # type: ignore[union-attr]
-        f"📅 <b>{slot.date}, {slot.time}</b>\n"
-        f"🎯 Направление: {slot.direction}\n\n"
-        f"Загрузи своё резюме — это поможет провести более предметную прожарку.\n\n"
-        f"<i>Отправь PDF-файл, фото или вставь ссылку. "
-        f"Или нажми «Пропустить», если резюме нет.</i>",
-        reply_markup=_resume_upload_keyboard(),
-        parse_mode="HTML",
-    )
+    if is_fast_track:
+        company_label = slot.company or slot.direction
+        await callback.message.answer(  # type: ignore[union-attr]
+            f"⚡ <b>Быстрый отбор на вакансию — {company_label}</b>\n\n"
+            f"Для участия необходимо загрузить резюме.\n"
+            f"Без резюме запись невозможна.\n\n"
+            f"Загрузи резюме:",
+            reply_markup=_resume_upload_keyboard_mandatory(),
+            parse_mode="HTML",
+        )
+    else:
+        await callback.message.answer(  # type: ignore[union-attr]
+            f"📅 <b>{slot.date}, {slot.time}</b>\n"
+            f"🎯 Направление: {slot.direction}\n\n"
+            f"Загрузи своё резюме — это поможет провести более предметную прожарку.\n\n"
+            f"<i>Отправь PDF-файл, фото или вставь ссылку. "
+            f"Или нажми «Пропустить», если резюме нет.</i>",
+            reply_markup=_resume_upload_keyboard(),
+            parse_mode="HTML",
+        )
 
 
 # ── Загрузка резюме — файл ────────────────────────────────────────────────────
@@ -245,12 +281,27 @@ async def handle_resume_link(
 ) -> None:
     text = (message.text or "").strip()
     if not text.startswith("http"):
-        await message.answer(
-            "Пожалуйста, отправь корректную ссылку (начинается с http...) "
-            "или нажми «Пропустить»."
-        )
+        fsm_data = await state.get_data()
+        if fsm_data.get("is_fast_track"):
+            await message.answer(
+                "Для быстрого отбора резюме обязательно.\n"
+                "Загрузи файл или вставь ссылку.",
+                reply_markup=_resume_upload_keyboard_mandatory(),
+            )
+        else:
+            await message.answer(
+                "Пожалуйста, отправь корректную ссылку (начинается с http...) "
+                "или нажми «Пропустить»."
+            )
         return
     await _complete_booking(message, state, user, container, resume_url=text)
+
+
+# ── Подсказка для fast_track (информационные кнопки) ─────────────────────────
+
+@router.callback_query(F.data == "cw:roast_resume_hint")
+async def handle_resume_hint(callback: CallbackQuery) -> None:
+    await callback.answer("Отправь файл или ссылку прямо в чат", show_alert=False)
 
 
 # ── Пропустить резюме ─────────────────────────────────────────────────────────
@@ -262,6 +313,13 @@ async def handle_resume_skip(
     user: User,
     container: Container,
 ) -> None:
+    fsm_data = await state.get_data()
+    if fsm_data.get("is_fast_track"):
+        await callback.answer(
+            "Для быстрого отбора резюме обязательно.",
+            show_alert=True,
+        )
+        return
     await callback.answer()
     await _complete_booking(callback.message, state, user, container)  # type: ignore[arg-type]
 

@@ -254,6 +254,32 @@ class GoogleSheetsService:
             logger.exception("Ошибка обновления отмены прожарки в Sheets")
             raise
 
+    async def append_waitlist(
+        self,
+        user_id: str,
+        telegram_id: int,
+        username: str,
+        first_name: str,
+    ) -> None:
+        if not self._enabled:
+            return
+        try:
+            ws = await self._get_sheet("waitlist")
+            row = [
+                user_id,
+                str(telegram_id),
+                username,
+                first_name,
+                datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+            ]
+            await asyncio.wait_for(
+                asyncio.to_thread(ws.append_row, row),
+                timeout=_TIMEOUT,
+            )
+        except Exception:
+            logger.exception("Ошибка записи в лист waitlist")
+            raise
+
     async def update_admins(self, telegram_ids: list[int]) -> None:
         if not self._enabled:
             return

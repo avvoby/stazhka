@@ -3,7 +3,7 @@ from datetime import datetime
 from aiogram import F, Router
 from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 from src.application.use_cases.applications import GetUserApplications
 from src.application.use_cases.onboarding import GetOrCreateUser
@@ -16,7 +16,6 @@ from src.interface.telegram.keyboards.main import (
     cancel_keyboard,
     course_keyboard,
     main_menu_keyboard,
-    privacy_keyboard,
     profile_edit_v2_keyboard,
     profile_edit_keyboard,
     profile_v2_keyboard,
@@ -91,23 +90,10 @@ async def _save_profile(user_id: object, fsm_data: dict, container: Container) -
 @router.message(Command("menu"))
 async def cmd_menu(message: Message, user: object) -> None:
     u: User = user  # type: ignore[assignment]
+    name = u.display_name or ""
     await message.answer(
-        f"Главное меню, {u.display_name} 👇",
+        f"Главное меню, {name} 👇",
         reply_markup=main_menu_keyboard(),
-    )
-
-
-@router.message(F.text == "🎓 ВЕСЕННЯЯ НЕДЕЛЯ КАРЬЕРЫ ВШБ 🎓")
-async def handle_career_week_button(message: Message) -> None:
-    from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-    await message.answer(
-        "🎓 <b>Весенняя неделя карьеры ВШБ</b>\n\nНажми кнопку ниже, чтобы начать:",
-        reply_markup=InlineKeyboardMarkup(
-            inline_keyboard=[[
-                InlineKeyboardButton(text="Перейти к неделе карьеры →", callback_data="career_week_start")
-            ]]
-        ),
-        parse_mode="HTML",
     )
 
 
@@ -120,18 +106,40 @@ async def cmd_start(
     u: User = user  # type: ignore[assignment]
     await state.clear()
 
-    if u.profile and u.profile.specialty and u.profile.skills:
+    name = u.display_name or (message.from_user.first_name if message.from_user else "")
+
+    if u.profile and u.profile.about:
         await message.answer(
-            f"С возвращением, {u.display_name}! 👋",
+            f"С возвращением, {name}! 👋",
             reply_markup=main_menu_keyboard(),
         )
         return
 
-    await message.answer(PRIVACY_TEXT, reply_markup=privacy_keyboard())
+    await message.answer(
+        f"Привет, {name}! 👋\n\n"
+        "Нажимая «Продолжить», ты соглашаешься\n"
+        "с условиями использования сервиса.",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+            InlineKeyboardButton(text="✅ Продолжить", callback_data="onboard_accept")
+        ]]),
+    )
     await state.set_state(OnboardingStates.waiting_privacy)
 
 
-# ── Шаг 1: Политика ──────────────────────────────────────────────────────────
+# ── Принятие условий ─────────────────────────────────────────────────────────
+
+@router.callback_query(F.data == "onboard_accept")
+async def handle_onboard_accept(callback: CallbackQuery, state: FSMContext) -> None:
+    await callback.answer()
+    await callback.message.edit_reply_markup(reply_markup=None)  # type: ignore[union-attr]
+    await callback.message.answer(  # type: ignore[union-attr]
+        "Добро пожаловать! 🎉\n\nВыбери, что тебя интересует:",
+        reply_markup=main_menu_keyboard(),
+    )
+    await state.clear()
+
+
+# ── Шаг 1: Специализация (онбординг, если запустят /start повторно) ──────────
 
 @router.callback_query(F.data == "privacy:accept", OnboardingStates.waiting_privacy)
 async def accept_privacy(callback: CallbackQuery, state: FSMContext) -> None:
@@ -561,6 +569,81 @@ async def edit_salary_save(
     await state.clear()
     await message.answer(
         f"✅ Ожидаемая зарплата: {salary:,} ₽".replace(",", " "),
+        reply_markup=main_menu_keyboard(),
+    )
+
+
+# ── Waitlist ─────────────────────────────────────────────────────────────────
+
+@router.callback_query(F.data == "waitlist_menu")
+async def handle_waitlist_menu(callback: CallbackQuery) -> None:
+    await callback.answer()
+    await callback.message.answer(  # type: ignore[union-attr]
+        "🚀 <b>Осталось совсем немного…</b>\n\n"
+        "Скоро тут будет новый продукт, который\n"
+        "поможет тебе найти работу мечты 🎯\n\n"
+        "Нажимай кнопку ниже и узнай о нём первым 👇",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="📋 ЛИСТ ОЖИДАНИЯ", callback_data="waitlist_join")],
+            [InlineKeyboardButton(text="🔍 ПОДРОБНЕЕ О СТАЖКЕ", url="https://stazhka.ru")],
+        ]),
+        parse_mode="HTML",
+    )
+
+
+@router.callback_query(F.data == "waitlist_join")
+async def handle_waitlist_join(
+    callback: CallbackQuery,
+    user: object,
+    container: Container,
+) -> None:
+    u: User = user  # type: ignore[assignment]
+    cache = container.cw_cache
+
+    if cache and await cache.check_waitlist(str(u.id)):
+        await callback.answer()
+        await callback.message.answer(  # type: ignore[union-attr]
+            "Ты уже в списке! 🎉\nМы напишем тебе первым.",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="← Назад", callback_data="waitlist_menu")],
+            ]),
+        )
+        return
+
+    if cache:
+        await cache.add_to_waitlist(str(u.id))
+
+    sheets = container.cw_sheets
+    if sheets:
+        import asyncio as _asyncio
+        tg = callback.from_user  # type: ignore[union-attr]
+        _asyncio.create_task(
+            sheets.append_waitlist(
+                user_id=str(u.id),
+                telegram_id=tg.id if tg else 0,
+                username=tg.username or "" if tg else "",
+                first_name=tg.first_name or "" if tg else "",
+            )
+        )
+
+    await callback.answer()
+    await callback.message.answer(  # type: ignore[union-attr]
+        "🎉 <b>Поздравляем!</b>\n\n"
+        "Теперь ты раньше всех узнаешь о Стажке 🚀",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="← Главное меню", callback_data="waitlist_back_main")],
+        ]),
+        parse_mode="HTML",
+    )
+
+
+@router.callback_query(F.data == "waitlist_back_main")
+async def handle_waitlist_back_main(callback: CallbackQuery, user: object) -> None:
+    u: User = user  # type: ignore[assignment]
+    name = u.display_name or ""
+    await callback.answer()
+    await callback.message.answer(  # type: ignore[union-attr]
+        f"Главное меню, {name} 👇",
         reply_markup=main_menu_keyboard(),
     )
 
