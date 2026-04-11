@@ -102,13 +102,17 @@ async def handle_direction(callback: CallbackQuery, state: FSMContext) -> None:
 
 # ── Шаг 2: Уровень образования ────────────────────────────────────────────────
 
-@router.callback_query(F.data.startswith("cw:level:"), CareerWeekRegistrationStates.waiting_level)
+_LEVEL_MAP = {"bach": "бакалавриат", "mag": "магистратура"}
+
+
+@router.callback_query(F.data.startswith("cw:lvl:"), CareerWeekRegistrationStates.waiting_level)
 async def handle_level(
     callback: CallbackQuery,
     state: FSMContext,
     container: Container,
 ) -> None:
-    level = (callback.data or "").split("cw:level:", 1)[1]
+    lvl_code = (callback.data or "").split("cw:lvl:", 1)[1]
+    level = _LEVEL_MAP.get(lvl_code, lvl_code)
     await state.update_data(level=level)
     await callback.message.edit_reply_markup(reply_markup=None)  # type: ignore[union-attr]
     await callback.answer()
@@ -119,6 +123,8 @@ async def handle_level(
         programs = await cache.get_programs_by_level(level)
 
     if programs:
+        # Сохраняем список для индексной адресации в handle_program_select
+        await state.update_data(programs_list=programs)
         await callback.message.answer(  # type: ignore[union-attr]
             f"<b>Шаг 3 из 5 {_STEPS[2]}</b>\n\n"
             f"Выбери свою программу обучения:",
@@ -152,7 +158,15 @@ async def handle_program_select(callback: CallbackQuery, state: FSMContext) -> N
         )
         return  # остаёмся в waiting_program, ждём текст
 
-    await state.update_data(program=value)
+    # Callback содержит индекс — ищем название в FSM
+    fsm = await state.get_data()
+    programs_list: list[str] = fsm.get("programs_list", [])
+    try:
+        program = programs_list[int(value)]
+    except (ValueError, IndexError):
+        program = value  # fallback на случай старых/неожиданных данных
+
+    await state.update_data(program=program)
     await callback.message.answer(  # type: ignore[union-attr]
         f"<b>Шаг 4 из 5 {_STEPS[3]}</b>\n\n"
         f"Какой у тебя курс?",
@@ -196,6 +210,9 @@ async def handle_course(
     cache = container.cw_cache
     skills_list = await cache.get_skills() if cache else []
 
+    # Сохраняем список для индексной адресации в handle_skill_toggle
+    await state.update_data(skills_list=skills_list)
+
     await callback.message.answer(  # type: ignore[union-attr]
         f"<b>Шаг 5 из 5 {_STEPS[4]}</b>\n\n"
         f"Выбери свои навыки (можно несколько):",
@@ -214,9 +231,9 @@ async def handle_skill_toggle(
     state: FSMContext,
     container: Container,
 ) -> None:
-    skill = (callback.data or "").split("cw:skill:", 1)[1]
+    raw = (callback.data or "").split("cw:skill:", 1)[1]
 
-    if skill == "__other__":
+    if raw == "__other__":
         await callback.message.answer(  # type: ignore[union-attr]
             "Введи навык, которого нет в списке:",
         )
@@ -224,7 +241,18 @@ async def handle_skill_toggle(
         await callback.answer()
         return
 
+    # Callback содержит индекс — ищем название в FSM
     fsm = await state.get_data()
+    skills_list: list[str] = fsm.get("skills_list", [])
+    if not skills_list:
+        cache = container.cw_cache
+        skills_list = await cache.get_skills() if cache else []
+
+    try:
+        skill = skills_list[int(raw)]
+    except (ValueError, IndexError):
+        skill = raw  # fallback
+
     selected: list[str] = list(fsm.get("skills", []))
     if skill in selected:
         selected.remove(skill)
@@ -232,9 +260,6 @@ async def handle_skill_toggle(
         selected.append(skill)
 
     await state.update_data(skills=selected)
-
-    cache = container.cw_cache
-    skills_list = await cache.get_skills() if cache else []
     await callback.message.edit_reply_markup(  # type: ignore[union-attr]
         reply_markup=skills_keyboard(selected, skills_list=skills_list)
     )
@@ -256,10 +281,13 @@ async def handle_skill_other(
     selected: list[str] = list(fsm.get("skills", []))
     if custom not in selected:
         selected.append(custom)
-    await state.update_data(skills=selected)
 
-    cache = container.cw_cache
-    skills_list = await cache.get_skills() if cache else []
+    skills_list: list[str] = fsm.get("skills_list", [])
+    if not skills_list:
+        cache = container.cw_cache
+        skills_list = await cache.get_skills() if cache else []
+
+    await state.update_data(skills=selected)
     await message.answer(
         f"✓ Добавлено: «{custom}»\n\nПродолжай выбирать или нажми ✅ Готово.",
         reply_markup=skills_keyboard(selected, skills_list=skills_list),
@@ -300,6 +328,15 @@ async def handle_skills_done(
         return
 
     await state.clear()
+
+    # Пишем в Google Sheets в фоне (не блокируем ответ)
+    sheets = container.cw_sheets
+    if sheets:
+        tg = callback.from_user
+        user_name = (tg.full_name if tg else None) or user.display_name or ""
+        asyncio.create_task(
+            sheets.append_registration(reg, user_name)
+        )
 
     msg = callback.message  # type: ignore[union-attr]
 

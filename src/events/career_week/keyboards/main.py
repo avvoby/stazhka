@@ -44,17 +44,19 @@ def level_keyboard() -> InlineKeyboardMarkup:
     """Выбор уровня образования — бакалавриат или магистратура."""
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="🎓 Бакалавриат", callback_data="cw:level:бакалавриат")],
-            [InlineKeyboardButton(text="🎓 Магистратура", callback_data="cw:level:магистратура")],
+            [InlineKeyboardButton(text="🎓 Бакалавриат", callback_data="cw:lvl:bach")],
+            [InlineKeyboardButton(text="🎓 Магистратура", callback_data="cw:lvl:mag")],
         ]
     )
 
 
 def programs_keyboard(programs: list[str]) -> InlineKeyboardMarkup:
-    """Список образовательных программ + кнопка «Другое»."""
+    """Список образовательных программ + кнопка «Другое».
+    callback_data = cw:prog:{index} — индекс вместо названия (64-байт лимит Telegram).
+    """
     rows = [
-        [InlineKeyboardButton(text=prog, callback_data=f"cw:prog:{prog}")]
-        for prog in programs
+        [InlineKeyboardButton(text=prog, callback_data=f"cw:prog:{i}")]
+        for i, prog in enumerate(programs)
     ]
     rows.append([InlineKeyboardButton(text="✏️ Другое", callback_data="cw:prog:__other__")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
@@ -75,22 +77,21 @@ def skills_keyboard(
     """
     Мультиселект навыков.
     skills_list — динамический список из кэша; если None — используется SKILLS_LIST.
+    callback_data = cw:skill:{index} — индекс вместо названия (64-байт лимит Telegram).
     """
     source = skills_list if skills_list is not None else SKILLS_LIST
     rows: list[list[InlineKeyboardButton]] = []
-    # По 2 навыка в ряд
     for i in range(0, len(source), 2):
         row = []
-        for skill in source[i:i + 2]:
+        for j, skill in enumerate(source[i:i + 2]):
+            idx = i + j
             prefix = "✓ " if skill in selected else ""
             row.append(InlineKeyboardButton(
                 text=f"{prefix}{skill}",
-                callback_data=f"cw:skill:{skill}",
+                callback_data=f"cw:skill:{idx}",
             ))
         rows.append(row)
-    # Кнопка "Другое"
     rows.append([InlineKeyboardButton(text="✏️ Другое", callback_data="cw:skill:__other__")])
-    # Кнопка подтверждения
     rows.append([InlineKeyboardButton(text="✅ Готово", callback_data="cw:skills_done")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
