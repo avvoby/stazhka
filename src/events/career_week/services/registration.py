@@ -43,6 +43,10 @@ class CareerWeekRegistrationService:
         skills: list[str],
     ) -> CareerWeekRegistration:
         """Регистрирует участника и возвращает объект регистрации с кодом."""
+        logger.info(
+            "register_user: старт — user_id=%s direction=%s program=%s course=%s",
+            user_id, direction, program, course,
+        )
         code = await self.generate_unique_code(session)
         reg_id = uuid4()
         now = datetime.utcnow()
@@ -65,6 +69,7 @@ class CareerWeekRegistrationService:
                 "registered_at": now,
             },
         )
+        logger.info("register_user: запись в БД создана — code=%s reg_id=%s", code, reg_id)
 
         return CareerWeekRegistration(
             id=reg_id,

@@ -381,8 +381,10 @@ async def _complete_booking(
     sheets = container.cw_sheets
     if sheets:
         import asyncio
+        tg = message.from_user
+        full_name = (tg.full_name if tg else None) or user.display_name or ""
         asyncio.create_task(
-            sheets.append_roast_booking(booking, user_code)
+            sheets.append_roast_booking(booking, user_code, full_name=full_name)
         )
 
     type_label = _TYPE_LABELS.get(slot_type, slot_type)
