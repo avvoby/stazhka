@@ -166,7 +166,8 @@ class GoogleSheetsService:
     async def append_registration(
         self,
         reg: CareerWeekRegistration,
-        user_name: str,
+        full_name: str,
+        telegram_id: int | None = None,
     ) -> None:
         if not self._enabled:
             logger.warning("append_registration: Sheets отключён, запись пропущена (code=%s)", reg.code)
@@ -177,14 +178,17 @@ class GoogleSheetsService:
         )
         try:
             ws = await self._get_sheet("registrations")
+            # Колонки: user_id | full_name | telegram_id | code | direction |
+            #          program | course | skills | registered_at
             row = [
                 str(reg.user_id),
-                user_name,
+                full_name,
+                str(telegram_id) if telegram_id else "",
                 reg.code,
                 reg.direction,
                 reg.program,
                 reg.course,
-                ", ".join(reg.skills),
+                ", ".join(reg.skills or []),
                 reg.registered_at.strftime("%Y-%m-%d %H:%M:%S"),
             ]
             await asyncio.wait_for(
@@ -206,15 +210,6 @@ class GoogleSheetsService:
             return
         try:
             ws = await self._get_sheet("roast_registrations")
-            if booking.resume_file_id:
-                resume_type = "telegram_file"
-                resume_value = booking.resume_file_id
-            elif booking.resume_url:
-                resume_type = "url"
-                resume_value = booking.resume_url
-            else:
-                resume_type = "none"
-                resume_value = "не загружено"
             booked_at_str = (
                 booking.booked_at.strftime("%Y-%m-%d %H:%M:%S")
                 if booking.booked_at
@@ -225,17 +220,18 @@ class GoogleSheetsService:
                 if booking.cancelled_at
                 else ""
             )
-            # Колонки: booking_id | user_code | full_name | slot_id | type |
-            #          direction | resume_type | resume_value | booked_at | cancelled_at
+            # Колонки: booking_id | user_id | code | full_name | slot_id | type |
+            #          direction | resume_file_id | resume_url | booked_at | cancelled_at
             row = [
                 str(booking.id),
+                str(booking.user_id),
                 user_code,
                 full_name or "",
                 booking.slot_id,
                 booking.slot_type,
-                booking.direction,
-                resume_type,
-                resume_value,
+                booking.direction or "",
+                booking.resume_file_id or "",
+                booking.resume_url or "",
                 booked_at_str,
                 cancelled_at_str,
             ]
@@ -260,7 +256,7 @@ class GoogleSheetsService:
                     if val == booking_id:
                         row_num = idx + 1
                         # Колонка 10 = cancelled_at (после добавления full_name)
-                        ws.update_cell(row_num, 10, cancelled_str)
+                        ws.update_cell(row_num, 11, cancelled_str)
                         return
 
             await asyncio.wait_for(

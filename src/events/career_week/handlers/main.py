@@ -333,9 +333,10 @@ async def handle_skills_done(
     sheets = container.cw_sheets
     if sheets:
         tg = callback.from_user
-        user_name = (tg.full_name if tg else None) or user.display_name or ""
+        full_name = (tg.full_name if tg else None) or user.display_name or ""
+        telegram_id = tg.id if tg else None
         asyncio.create_task(
-            sheets.append_registration(reg, user_name)
+            sheets.append_registration(reg, full_name=full_name, telegram_id=telegram_id)
         )
 
     msg = callback.message  # type: ignore[union-attr]
