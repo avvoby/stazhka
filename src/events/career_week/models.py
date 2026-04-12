@@ -24,7 +24,8 @@ class RoastSlot:
     direction: str         # Консалтинг / Бигтех / Финансы и т.д.
     capacity: int
     registrations_count: int
-    company: str | None = None  # для fast_track слотов
+    company: str | None = None     # для fast_track слотов
+    vacancy_id: str | None = None  # привязка к конкретной вакансии
 
     @property
     def is_available(self) -> bool:

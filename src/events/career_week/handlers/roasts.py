@@ -129,6 +129,28 @@ async def handle_roasts_menu(callback: CallbackQuery, state: FSMContext) -> None
     )
 
 
+# ── Клавиатура компаний ──────────────────────────────────────────────────────
+
+def _companies_keyboard(companies: list[str]) -> InlineKeyboardMarkup:
+    rows = [
+        [InlineKeyboardButton(text=company, callback_data=f"cw:company:{i}")]
+        for i, company in enumerate(companies)
+    ]
+    rows.append([InlineKeyboardButton(text="← Назад", callback_data="cw:roasts")])
+    rows.append([InlineKeyboardButton(text="← Главное меню", callback_data="cw:menu")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def _vacancies_keyboard(vacancies: list[dict]) -> InlineKeyboardMarkup:
+    rows = [
+        [InlineKeyboardButton(text=v["title"], callback_data=f"cw:vacancy:{i}")]
+        for i, v in enumerate(vacancies)
+    ]
+    rows.append([InlineKeyboardButton(text="← Назад", callback_data="cw:roasts")])
+    rows.append([InlineKeyboardButton(text="← Главное меню", callback_data="cw:menu")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
 # ── Выбор типа прожарки ───────────────────────────────────────────────────────
 
 @router.callback_query(F.data.startswith("cw:roast_type:"))
@@ -143,10 +165,7 @@ async def handle_roast_type(
 
     cache = container.cw_cache
     all_slots = await cache.get_roast_slots() if cache else []
-    slots = sorted(
-        [s for s in all_slots if s.type == slot_type],
-        key=lambda s: (s.date, s.time),
-    )
+    slots = [s for s in all_slots if s.type == slot_type]
 
     if not slots:
         await callback.message.answer(  # type: ignore[union-attr]
@@ -158,15 +177,125 @@ async def handle_roast_type(
         return
 
     await state.update_data(slot_type=slot_type)
-    await state.set_state(RoastBookingStates.choosing_slot)
 
     if slot_type == "fast_track":
-        header = f"<b>{type_label}</b>\n⚠️ Резюме обязательно.\n\nВыбери вакансию:"
-    else:
-        header = f"<b>{type_label}</b>\nВыбери удобный слот:"
+        # Показываем список уникальных компаний
+        seen: set[str] = set()
+        companies: list[str] = []
+        for s in slots:
+            if s.company and s.company not in seen:
+                seen.add(s.company)
+                companies.append(s.company)
 
+        await state.update_data(companies_list=companies)
+        await state.set_state(RoastBookingStates.choosing_company)
+
+        await callback.message.answer(  # type: ignore[union-attr]
+            f"<b>{type_label}</b>\n⚠️ Резюме обязательно.\n\nВыбери компанию:",
+            reply_markup=_companies_keyboard(companies),
+            parse_mode="HTML",
+        )
+    else:
+        sorted_slots = sorted(slots, key=lambda s: (s.date, s.time))
+        await state.set_state(RoastBookingStates.choosing_slot)
+        await callback.message.answer(  # type: ignore[union-attr]
+            f"<b>{type_label}</b>\nВыбери удобный слот:",
+            reply_markup=_slots_keyboard(sorted_slots),
+            parse_mode="HTML",
+        )
+
+
+# ── Выбор компании (fast_track) ───────────────────────────────────────────────
+
+@router.callback_query(F.data.startswith("cw:company:"), RoastBookingStates.choosing_company)
+async def handle_company_select(
+    callback: CallbackQuery,
+    state: FSMContext,
+    container: Container,
+) -> None:
+    await callback.answer()
+    idx_str = (callback.data or "").split("cw:company:", 1)[1]
+
+    fsm = await state.get_data()
+    companies_list: list[str] = fsm.get("companies_list", [])
+    try:
+        company = companies_list[int(idx_str)]
+    except (ValueError, IndexError):
+        await callback.message.answer("Ошибка выбора компании, попробуй ещё раз.")  # type: ignore[union-attr]
+        return
+
+    await state.update_data(selected_company=company)
+
+    # Пробуем получить вакансии компании
+    cache = container.cw_cache
+    vacancies = await cache.get_vacancies_by_company(company) if cache else []
+
+    if vacancies:
+        await state.update_data(vacancies_list=vacancies)
+        await state.set_state(RoastBookingStates.choosing_vacancy)
+        await callback.message.answer(  # type: ignore[union-attr]
+            f"⚡ <b>{company}</b>\n\nВыбери вакансию:",
+            reply_markup=_vacancies_keyboard(vacancies),
+            parse_mode="HTML",
+        )
+    else:
+        # Fallback — показываем слоты сразу
+        all_slots = await cache.get_roast_slots() if cache else []
+        slots = sorted(
+            [s for s in all_slots if s.type == "fast_track" and s.company == company],
+            key=lambda s: (s.date, s.time),
+        )
+        await state.update_data(selected_vacancy_title="", selected_vacancy_id="")
+        await state.set_state(RoastBookingStates.choosing_slot)
+        await callback.message.answer(  # type: ignore[union-attr]
+            f"⚡ <b>{company}</b>\n\nВыбери время:",
+            reply_markup=_slots_keyboard(slots),
+            parse_mode="HTML",
+        )
+
+
+# ── Выбор вакансии (fast_track) ───────────────────────────────────────────────
+
+@router.callback_query(F.data.startswith("cw:vacancy:"), RoastBookingStates.choosing_vacancy)
+async def handle_vacancy_select(
+    callback: CallbackQuery,
+    state: FSMContext,
+    container: Container,
+) -> None:
+    await callback.answer()
+    idx_str = (callback.data or "").split("cw:vacancy:", 1)[1]
+
+    fsm = await state.get_data()
+    vacancies_list: list[dict] = fsm.get("vacancies_list", [])
+    try:
+        vacancy = vacancies_list[int(idx_str)]
+    except (ValueError, IndexError):
+        await callback.message.answer("Ошибка выбора вакансии, попробуй ещё раз.")  # type: ignore[union-attr]
+        return
+
+    company: str = fsm.get("selected_company", "")
+    vacancy_title: str = vacancy.get("title", "")
+    vacancy_id: str = vacancy.get("id", "")
+
+    await state.update_data(
+        selected_vacancy_title=vacancy_title,
+        selected_vacancy_id=vacancy_id,
+    )
+
+    # Фильтруем слоты: fast_track + company (+ vacancy_id если заполнен)
+    cache = container.cw_cache
+    all_slots = await cache.get_roast_slots() if cache else []
+    slots = [
+        s for s in all_slots
+        if s.type == "fast_track"
+        and s.company == company
+        and (not vacancy_id or not s.vacancy_id or s.vacancy_id == vacancy_id)
+    ]
+    slots = sorted(slots, key=lambda s: (s.date, s.time))
+
+    await state.set_state(RoastBookingStates.choosing_slot)
     await callback.message.answer(  # type: ignore[union-attr]
-        header,
+        f"⚡ <b>{company} — {vacancy_title}</b>\n\nВыбери время:",
         reply_markup=_slots_keyboard(slots),
         parse_mode="HTML",
     )
@@ -342,6 +471,8 @@ async def _complete_booking(
     slot_date: str = fsm.get("slot_date", "")
     slot_time: str = fsm.get("slot_time", "")
     slot_direction: str = fsm.get("slot_direction", "")
+    selected_company: str = fsm.get("selected_company", "")
+    selected_vacancy_title: str = fsm.get("selected_vacancy_title", "")
 
     await state.clear()
 
@@ -384,13 +515,28 @@ async def _complete_booking(
         tg = message.from_user
         full_name = (tg.full_name if tg else None) or user.display_name or ""
         asyncio.create_task(
-            sheets.append_roast_booking(booking, user_code, full_name=full_name)
+            sheets.append_roast_booking(
+                booking,
+                user_code,
+                full_name=full_name,
+                vacancy=selected_vacancy_title or None,
+            )
         )
 
     type_label = _TYPE_LABELS.get(slot_type, slot_type)
+    if slot_type == "fast_track" and selected_company:
+        company_line = f"⚡ Быстрый отбор — {selected_company}\n"
+        vacancy_line = f"💼 Вакансия: {selected_vacancy_title}\n" if selected_vacancy_title else ""
+        direction_line = ""
+    else:
+        company_line = f"🔥 {type_label} — {slot_direction}\n"
+        vacancy_line = ""
+        direction_line = ""
     await message.answer(
         f"✅ <b>Ты записан!</b>\n\n"
-        f"🔥 {type_label} — {slot_direction}\n"
+        f"{company_line}"
+        f"{vacancy_line}"
+        f"{direction_line}"
         f"📅 {slot_date}, {slot_time}\n"
         f"🎫 Твой код: <b>{user_code}</b>\n\n"
         f"Все свои записи можешь посмотреть\n"

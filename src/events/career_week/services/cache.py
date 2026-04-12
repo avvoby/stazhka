@@ -38,6 +38,7 @@ class CareerWeekCacheService:
         programs = await sheets.get_programs()
         admins = await sheets.get_admins()
         skills = await sheets.get_skills()
+        vacancies = await sheets.get_vacancies()
 
         await self._redis.setex(_PREFIX + "partners", _TTL, json.dumps(partners, ensure_ascii=False))
         await self._redis.setex(_PREFIX + "schedule", _TTL, json.dumps(schedule, ensure_ascii=False))
@@ -45,6 +46,7 @@ class CareerWeekCacheService:
         await self._redis.setex(_PREFIX + "programs", _TTL, json.dumps(programs, ensure_ascii=False))
         await self._redis.setex(_PREFIX + "admins", _TTL, json.dumps(admins, ensure_ascii=False))
         await self._redis.setex(_PREFIX + "skills", _TTL, json.dumps(skills, ensure_ascii=False))
+        await self._redis.setex(_PREFIX + "vacancies", _TTL, json.dumps(vacancies, ensure_ascii=False))
 
         # Инициализируем/обновляем слоты в БД
         if roast_slots:
@@ -74,6 +76,7 @@ class CareerWeekCacheService:
             "roast_slots": len(roast_slots),
             "programs": len(programs),
             "skills": len(skills),
+            "vacancies": len(vacancies),
         }
         logger.info("CareerWeek кэш синхронизирован: %s", stats)
         return stats
@@ -124,6 +127,7 @@ class CareerWeekCacheService:
                 capacity=int(s.get("capacity", 0)),
                 registrations_count=counts.get(str(s.get("id", "")), 0),
                 company=str(s["company"]) if s.get("company") else None,
+                vacancy_id=str(s["vacancy_id"]) if s.get("vacancy_id") else None,
             )
             for s in slots_data
             if s.get("id")
@@ -168,6 +172,16 @@ class CareerWeekCacheService:
             return True
         admins = await self.get_admins()
         return telegram_id in admins
+
+    async def get_vacancies(self) -> list[dict]:
+        raw = await self._redis.get(_PREFIX + "vacancies")
+        if not raw:
+            return []
+        return json.loads(raw)  # type: ignore[no-any-return]
+
+    async def get_vacancies_by_company(self, company: str) -> list[dict]:
+        vacancies = await self.get_vacancies()
+        return [v for v in vacancies if v.get("company") == company]
 
     # ── Waitlist ──────────────────────────────────────────────────────────────
 
