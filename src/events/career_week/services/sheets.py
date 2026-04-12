@@ -141,6 +141,33 @@ class GoogleSheetsService:
             logger.exception("Ошибка чтения листа skills")
             raise
 
+    async def get_vacancies(self) -> list[dict]:
+        """
+        Читает лист "vacancies".
+        Ожидаемые колонки: id, company, title, description.
+        """
+        if not self._enabled:
+            return []
+        try:
+            ws = await self._get_sheet("vacancies")
+            rows: list[dict] = await asyncio.wait_for(
+                asyncio.to_thread(ws.get_all_records),
+                timeout=_TIMEOUT,
+            )
+            return [
+                {
+                    "id": str(r.get("id", "")),
+                    "company": str(r.get("company", "")),
+                    "title": str(r.get("title", "")),
+                    "description": str(r.get("description", "")),
+                }
+                for r in rows
+                if r.get("id") and r.get("company") and r.get("title")
+            ]
+        except Exception:
+            logger.exception("Ошибка чтения листа vacancies")
+            raise
+
     async def get_admins(self) -> list[int]:
         if not self._enabled:
             return []
@@ -205,6 +232,7 @@ class GoogleSheetsService:
         booking: RoastBooking,
         user_code: str,
         full_name: str | None = None,
+        vacancy: str | None = None,
     ) -> None:
         if not self._enabled:
             return
@@ -221,7 +249,7 @@ class GoogleSheetsService:
                 else ""
             )
             # Колонки: booking_id | user_id | code | full_name | slot_id | type |
-            #          direction | resume_file_id | resume_url | booked_at | cancelled_at
+            #          direction | vacancy | resume_file_id | resume_url | booked_at | cancelled_at
             row = [
                 str(booking.id),
                 str(booking.user_id),
@@ -230,6 +258,7 @@ class GoogleSheetsService:
                 booking.slot_id,
                 booking.slot_type,
                 booking.direction or "",
+                vacancy or "",
                 booking.resume_file_id or "",
                 booking.resume_url or "",
                 booked_at_str,
@@ -256,7 +285,7 @@ class GoogleSheetsService:
                     if val == booking_id:
                         row_num = idx + 1
                         # Колонка 10 = cancelled_at (после добавления full_name)
-                        ws.update_cell(row_num, 11, cancelled_str)
+                        ws.update_cell(row_num, 12, cancelled_str)
                         return
 
             await asyncio.wait_for(

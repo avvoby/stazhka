@@ -48,6 +48,8 @@ class ProfileEditStates(StatesGroup):
 
 class RoastBookingStates(StatesGroup):
     choosing_type    = State()
+    choosing_company = State()
+    choosing_vacancy = State()
     choosing_slot    = State()
     uploading_resume = State()
 
