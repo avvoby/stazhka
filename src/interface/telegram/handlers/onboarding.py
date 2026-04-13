@@ -579,10 +579,10 @@ async def edit_salary_save(
 async def handle_waitlist_menu(callback: CallbackQuery) -> None:
     await callback.answer()
     await callback.message.answer(  # type: ignore[union-attr]
-        "🚀 <b>Осталось совсем немного…</b>\n\n"
-        "Скоро тут будет новый продукт, который\n"
-        "поможет тебе найти работу мечты 🎯\n\n"
-        "Нажимай кнопку ниже и узнай о нём первым 👇",
+        "Осталось совсем немного…\n\n"
+        "Скоро тут будет новый продукт, который поможет\n"
+        "тебе найти работу мечты.\n\n"
+        "Нажимай кнопку ниже и узнай о нём первым.",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="📋 ЛИСТ ОЖИДАНИЯ", callback_data="waitlist_join")],
             [InlineKeyboardButton(text="🔍 ПОДРОБНЕЕ О СТАЖКЕ", url="https://stazhka.ru")],
@@ -629,12 +629,11 @@ async def handle_waitlist_join(
 
     await callback.answer()
     await callback.message.answer(  # type: ignore[union-attr]
-        "🎉 <b>Поздравляем!</b>\n\n"
-        "Теперь ты раньше всех узнаешь о Стажке 🚀",
+        "Готово!\n\n"
+        "Теперь ты раньше всех узнаешь о Стажке.",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="← Главное меню", callback_data="waitlist_back_main")],
         ]),
-        parse_mode="HTML",
     )
 
 
