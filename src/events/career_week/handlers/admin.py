@@ -902,7 +902,14 @@ async def handle_download_all_resumes(
             try:
                 file = await bot.get_file(booking.resume_file_id)
                 file_content = await bot.download_file(file.file_path)
-                ext = file.file_path.split(".")[-1] if file.file_path and "." in file.file_path else "pdf"
+                is_photo = (
+                    (file.file_path and file.file_path.startswith("photos/"))
+                    or booking.resume_file_id.startswith("AgAC")
+                )
+                if is_photo:
+                    ext = "jpg"
+                else:
+                    ext = file.file_path.split(".")[-1] if file.file_path and "." in file.file_path else "pdf"
                 safe_name = (booking.full_name or "unknown").replace(" ", "_")
                 filename = f"{booking.user_code}_{safe_name}.{ext}"
                 zf.writestr(filename, file_content.read())  # type: ignore[union-attr]
@@ -961,11 +968,18 @@ async def handle_get_resume(
     caption = f"📄 Резюме\nКод: {booking.user_code} · {booking.direction}"
 
     if booking.resume_file_id:
-        await bot.send_document(
-            chat_id=callback.from_user.id,  # type: ignore[union-attr]
-            document=booking.resume_file_id,
-            caption=caption,
-        )
+        if booking.resume_file_id.startswith("AgAC"):
+            await bot.send_photo(
+                chat_id=callback.from_user.id,  # type: ignore[union-attr]
+                photo=booking.resume_file_id,
+                caption=caption,
+            )
+        else:
+            await bot.send_document(
+                chat_id=callback.from_user.id,  # type: ignore[union-attr]
+                document=booking.resume_file_id,
+                caption=caption,
+            )
     elif booking.resume_url:
         await callback.message.answer(  # type: ignore[union-attr]
             f"{caption}\n\n🔗 {booking.resume_url}",
