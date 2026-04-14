@@ -766,6 +766,7 @@ _RESUMES_PAGE_SIZE = 10
 
 def _resumes_keyboard(bookings: list, offset: int, total: int) -> InlineKeyboardMarkup:
     rows = []
+    rows.append([InlineKeyboardButton(text="📦 Скачать все резюме (zip)", callback_data="cw:admin:resumes_zip")])
     for b in bookings:
         date_str = b.booked_at.strftime("%d.%m") if b.booked_at else ""
         label = f"Код {b.user_code} · {b.direction} · слот {b.slot_id} ({date_str})"
@@ -851,6 +852,83 @@ async def handle_admin_resumes_page(
 
     await callback.message.edit_reply_markup(  # type: ignore[union-attr]
         reply_markup=_resumes_keyboard(bookings, offset, total)
+    )
+
+
+@router.callback_query(F.data == "cw:admin:resumes_zip")
+@cw_admin_only
+async def handle_download_all_resumes(
+    callback: CallbackQuery,
+    container: Container,
+    bot: Bot,
+) -> None:
+    import io
+    import zipfile
+    from datetime import datetime
+
+    from aiogram.types import BufferedInputFile
+
+    await callback.answer()
+
+    rows = await container.session.execute(
+        text("""
+            SELECT b.id, b.resume_file_id, b.resume_url,
+                   b.slot_id, b.slot_type, b.direction,
+                   r.code AS user_code, r.full_name
+            FROM career_week_roast_bookings b
+            JOIN career_week_registrations r ON r.user_id = b.user_id
+            WHERE b.cancelled_at IS NULL
+              AND (b.resume_file_id IS NOT NULL OR b.resume_url IS NOT NULL)
+        """)
+    )
+    bookings = rows.fetchall()
+
+    if not bookings:
+        await callback.answer("Нет загруженных резюме", show_alert=True)
+        return
+
+    count = len(bookings)
+    await callback.message.answer(  # type: ignore[union-attr]
+        f"⏳ Собираю архив... ({count} файлов)"
+    )
+
+    zip_buffer = io.BytesIO()
+    errors = 0
+
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        for booking in bookings:
+            if not booking.resume_file_id:
+                continue
+            try:
+                file = await bot.get_file(booking.resume_file_id)
+                file_content = await bot.download_file(file.file_path)
+                ext = file.file_path.split(".")[-1] if file.file_path and "." in file.file_path else "pdf"
+                safe_name = (booking.full_name or "unknown").replace(" ", "_")
+                filename = f"{booking.user_code}_{safe_name}.{ext}"
+                zf.writestr(filename, file_content.read())  # type: ignore[union-attr]
+            except Exception as e:
+                errors += 1
+                logger.error("Не удалось скачать файл для %s: %s", booking.user_code, e)
+
+    zip_buffer.seek(0)
+    zip_bytes = zip_buffer.read()
+
+    if len(zip_bytes) < 100:
+        await callback.message.answer("Не удалось скачать файлы.")  # type: ignore[union-attr]
+        return
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+    await bot.send_document(
+        chat_id=callback.from_user.id,  # type: ignore[union-attr]
+        document=BufferedInputFile(
+            zip_bytes,
+            filename=f"resumes_{timestamp}.zip",
+        ),
+        caption=(
+            f"📦 Архив резюме\n"
+            f"Файлов: {count - errors}\n"
+            f"Ошибок: {errors}"
+        ),
     )
 
 
