@@ -1,0 +1,12 @@
+.DS_Store
+.idea/
+.vscode/
+*.log
+
+# Cloudflare Worker (этап 5)
+worker/.wrangler/
+worker/node_modules/
+worker/.dev.vars
+
+# Локальные эксперименты
+/scratch/

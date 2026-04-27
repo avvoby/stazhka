@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Стажка — Подготовка (P-1…P-10b)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="proto-shell.css?v=5">
+</head>
+<body>
+
+<div class="stage-label">
+  <b>Стажка · Подготовка</b>
+  кликабельный прототип · P-1…P-10b
+</div>
+
+<div class="stage-meta">
+  <kbd>←</kbd> <kbd>→</kbd> для навигации<br>
+  <kbd>R</kbd> сбросить · <kbd>T</kbd> tweaks
+</div>
+
+<div class="phone">
+  <div class="status-bar">
+    <span class="time">9:41</span>
+    <span class="right">
+      <svg width="17" height="12" viewBox="0 0 17 12" fill="currentColor"><rect x="0" y="6" width="3" height="6" rx="1"/><rect x="4.5" y="4" width="3" height="8" rx="1"/><rect x="9" y="2" width="3" height="10" rx="1"/><rect x="13.5" y="0" width="3" height="12" rx="1"/></svg>
+      <svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M1 5 Q8 -1 15 5"/><path d="M3.5 7.5 Q8 3 12.5 7.5"/><circle cx="8" cy="10" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="12" viewBox="0 0 24 12" fill="none" stroke="currentColor" stroke-width="1"><rect x=".5" y=".5" width="20" height="11" rx="3"/><rect x="2" y="2" width="17" height="8" rx="1.5" fill="currentColor"/><path d="M22 4v4" stroke-width="1.5"/></svg>
+    </span>
+  </div>
+
+  <div class="tg-header">
+    <div class="tg-l">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m15 6-6 6 6 6"/></svg>
+      Закрыть
+    </div>
+    <div>Стажка</div>
+    <div class="tg-close">⋯</div>
+  </div>
+
+  <div class="view has-tabbar" id="view"></div>
+
+  <div class="tabbar" id="tabbar"></div>
+</div>
+
+<div class="nav-pane" id="nav"><div class="label">Экраны</div></div>
+
+<div class="stage-bottom">
+  <button onclick="window.Proto.reset()">Сбросить</button>
+  <div class="sep"></div>
+  <span class="trace" id="trace">—</span>
+  <div class="sep"></div>
+  <button onclick="window.Proto.toggleTweaks()">Tweaks</button>
+</div>
+
+<div id="tweaks">
+  <h4>Tweaks</h4>
+  <div class="tw-row">
+    <label>Акцент</label>
+    <div class="swatches">
+      <div class="sw on" data-c="#7A1B1B" style="background:#7A1B1B"></div>
+      <div class="sw" data-c="#0F1A30" style="background:#0F1A30"></div>
+      <div class="sw" data-c="#1E6E4A" style="background:#1E6E4A"></div>
+      <div class="sw" data-c="#2b2b2b" style="background:#2b2b2b"></div>
+    </div>
+  </div>
+  <div class="tw-row">
+    <label>Хедер Telegram</label>
+    <button class="toggle on" id="tw-tg">вкл</button>
+  </div>
+  <div class="tw-row">
+    <label>Прыжок на экран</label>
+    <select id="tw-jump"></select>
+  </div>
+</div>
+
+<script>
+window.__TWEAKS = /*EDITMODE-BEGIN*/{
+  "accent": "#7A1B1B",
+  "showTelegramHeader": true
+}/*EDITMODE-END*/;
+</script>
+
+<script src="store.js"></script>
+<script src="prep-screens.js"></script>
+<script src="prep-engine.js"></script>
+</body>
+</html>
