@@ -1,84 +1,117 @@
-/* Telegram Mini App shell — minimal, fullscreen, no phone frame */
-:root{
-  --accent:#7A1B1B;
-  --tg-bg:#fff;
-  --tg-text:#1C1C1E;
-  --tg-line:#E5E5EA;
-  --tg-tab:#8E8E93;
+/* ============================================================
+   Telegram Mini App — SPA shell
+   Single-HTML layout без iframe и без iPhone-фрейма прото-канваса.
+   Поверх proto-shell.css: оверрайды для нейтрализации .phone-chrome.
+   ============================================================ */
+
+:root {
+  --tg-bg: #ffffff;
+  --tg-line: #E5E5EA;
+  --tg-tab: #8E8E93;
+  --tg-accent: #7A1B1B;
 }
 
-*{box-sizing:border-box}
-html,body{
-  margin:0;padding:0;
-  height:100%;width:100%;
-  background:var(--tg-bg);
-  overflow:hidden;
-  -webkit-font-smoothing:antialiased;
-  font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','SF Pro','Inter',system-ui,sans-serif;
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0;
+  height: 100%; width: 100%;
+  background: var(--tg-bg);
+  color: #1C1C1E;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro', 'Inter', system-ui, sans-serif;
 }
 
-/* Full-viewport iframe carrying the section */
-#section-frame{
-  position:fixed;
-  top:0;left:0;right:0;
-  bottom:64px; /* room for tabbar */
-  width:100%;
-  border:0;
-  background:var(--tg-bg);
-  /* iOS scroll fix */
-  -webkit-overflow-scrolling:touch;
+/* ---- Stage (контейнер активной секции) ---- */
+#stage {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  bottom: calc(64px + env(safe-area-inset-bottom, 0));
+  background: var(--tg-bg);
+  overflow: hidden;
+}
+body.section-onboarding #stage {
+  bottom: 0;
 }
 
-/* Tabbar — fixed at bottom of mini-app */
-.tg-tabbar{
-  position:fixed;
-  bottom:0;left:0;right:0;
-  height:calc(64px + env(safe-area-inset-bottom, 0));
-  padding-bottom:env(safe-area-inset-bottom, 0);
-  background:#fff;
-  border-top:1px solid var(--tg-line);
-  display:flex;
-  z-index:100;
+#view {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  background: #fff;
 }
-.tg-tab{
-  flex:1;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:3px;
-  background:none;border:none;
-  font-family:inherit;font-size:10.5px;
-  color:var(--tg-tab);
-  cursor:pointer;user-select:none;
-  -webkit-tap-highlight-color:transparent;
-  padding:8px 0;
-}
-.tg-tab svg{
-  width:24px;height:24px;
-  fill:none;stroke:currentColor;stroke-width:1.6;
-}
-.tg-tab.on{color:var(--accent)}
-.tg-tab.on svg{stroke-width:1.8}
 
-/* Loading splash while iframe loads */
-#splash{
-  position:fixed;inset:0;
-  background:var(--tg-bg);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:14px;z-index:200;
-  transition:opacity .25s;
+/* ---- Tabbar ---- */
+.tg-tabbar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: calc(64px + env(safe-area-inset-bottom, 0));
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  background: #fff;
+  border-top: 1px solid var(--tg-line);
+  display: flex;
+  z-index: 100;
 }
-#splash.gone{opacity:0;pointer-events:none}
-#splash .logo{
-  width:64px;height:64px;border-radius:18px;
-  background:var(--accent);color:#fff;
-  display:flex;align-items:center;justify-content:center;
-  font-size:26px;font-weight:600;letter-spacing:-1px;
-}
-#splash .name{font-size:15px;color:var(--tg-text);font-weight:500}
-#splash .sub{font-size:12px;color:var(--tg-tab)}
-.spinner-dot{
-  width:6px;height:6px;border-radius:50%;background:var(--accent);
-  animation:pp 1s ease-in-out infinite;
-}
-@keyframes pp{0%,100%{opacity:.3}50%{opacity:1}}
+body.section-onboarding .tg-tabbar { display: none; }
 
-/* Hide stage chrome inside iframed sections (defensive — also done in inject) */
+.tg-tab {
+  flex: 1;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 3px;
+  background: none; border: none;
+  font-family: inherit; font-size: 10.5px;
+  color: var(--tg-tab);
+  cursor: pointer; user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  padding: 8px 0;
+  min-height: 44px;
+}
+.tg-tab svg {
+  width: 24px; height: 24px;
+  fill: none; stroke: currentColor; stroke-width: 1.6;
+}
+.tg-tab.on { color: var(--tg-accent); }
+.tg-tab.on svg { stroke-width: 1.8; }
+
+/* ---- Splash ---- */
+#splash {
+  position: fixed; inset: 0;
+  background: var(--tg-bg);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 14px; z-index: 200;
+  transition: opacity .25s;
+}
+#splash.gone { opacity: 0; pointer-events: none; }
+#splash .logo {
+  width: 64px; height: 64px; border-radius: 18px;
+  background: var(--tg-accent); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26px; font-weight: 600; letter-spacing: -1px;
+}
+#splash .name { font-size: 15px; color: #1C1C1E; font-weight: 500; }
+#splash .sub { font-size: 12px; color: var(--tg-tab); }
+.spinner-dot {
+  width: 6px; height: 6px; border-radius: 50%; background: var(--tg-accent);
+  animation: pp 1s ease-in-out infinite;
+}
+@keyframes pp { 0%, 100% { opacity: .3; } 50% { opacity: 1; } }
+
+/* ---- Прото-канвас chrome — глушим в SPA ---- */
+/* proto-shell.css задаёт .phone (iPhone-frame), .stage-label, .nav-pane,
+   #tweaks, .stage-bottom, .status-bar, .tg-header. В SPA-режиме всё это
+   не нужно — экраны рендерятся без обёртки .phone. */
+.stage-label, .stage-meta, .stage-bottom, .nav-pane,
+#tweaks, .phone::before, .status-bar, .tg-header {
+  display: none !important;
+}
+
+/* `.view` из proto-shell.css имеет top:96px (под status-bar + tg-header).
+   В SPA #view — корневой контейнер, заполняет stage целиком. */
+#view, .view {
+  position: absolute !important;
+  inset: 0 !important;
+  background: #fff;
+}
+.view.has-tabbar { bottom: 0 !important; }

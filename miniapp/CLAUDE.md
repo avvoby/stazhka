@@ -102,8 +102,8 @@ bg:         #FFFFFF
 ## Этапы рефакторинга (план, апрель 2026)
 
 - [x] **0.** Репо `stazhka-miniapp/`, baseline-коммит
-- [ ] **1.** `store.js` — единый стор, миграция со старых ключей
-- [ ] **2.** Single-HTML SPA (убрать iframe, hash-роутер)
+- [x] **1.** `store.js` — единый стор, миграция со старых ключей
+- [x] **2.** Single-HTML SPA (убрать iframe, hash-роутер)
 - [ ] **3.** Telegram SDK (MainButton/BackButton/Haptic/initDataUnsafe)
 - [ ] **4.** Сократить онбординг 10→5 экранов
 - [ ] **5.** AI-чат через Cloudflare Worker

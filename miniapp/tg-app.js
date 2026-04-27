@@ -1,185 +1,200 @@
-/* Telegram Mini App — section router + TG SDK glue */
+/* ============================================================
+   Stazhka Mini App — SPA shell
+   Hash-роутер, lazy-load скриптов секций, mount/unmount,
+   мост к Telegram WebApp SDK.
+   ============================================================ */
 (function(){
+  // ---- SectionRegistry (заполняется engine-скриптами по мере загрузки) ----
+  const Sections = (() => {
+    const map = new Map();
+    return {
+      register(id, ctx){ map.set(id, ctx); },
+      get(id){ return map.get(id); },
+      has(id){ return map.has(id); }
+    };
+  })();
+  window.SectionRegistry = Sections;
+  window.SPA_MODE = true;
+
   // ---- Telegram SDK ----
   const tg = window.Telegram && window.Telegram.WebApp;
   if(tg){
-    try{
+    try {
       tg.ready();
       tg.expand();
-      // We force our own colors regardless of TG theme (consistency for the test)
       tg.setHeaderColor && tg.setHeaderColor('#7A1B1B');
       tg.setBackgroundColor && tg.setBackgroundColor('#ffffff');
       tg.disableVerticalSwipes && tg.disableVerticalSwipes();
-    }catch(e){}
+    } catch(e){ console.warn('TG init', e); }
   }
 
-  // ---- Sections (each is a full HTML page already living in the project) ----
-  const SECTIONS = [
-    { id:'onboarding', label:'Онбординг', file:'Stazhka Onboarding.html' },
-    { id:'search',     label:'Поиск',     file:'Stazhka Search.html' },
-    { id:'prep',       label:'Подготовка',file:'Stazhka Prep.html' },
-    { id:'progress',   label:'Прогресс',  file:'Stazhka Progress.html' },
-    { id:'chat',       label:'Чат',       file:'Stazhka Chat.html' },
-    { id:'profile',    label:'Профиль',   file:'Stazhka Profile.html' },
-  ];
-
-  // Onboarding shown first time only
-  const KEY_DONE = 'stazhka_onboarding_done_v1';
-  function isOnboarded(){ return localStorage.getItem(KEY_DONE) === '1'; }
-  function markOnboarded(){ localStorage.setItem(KEY_DONE, '1'); }
-
-  // ---- Tabbar ----
-  const tabbar = document.getElementById('tabbar');
-  const tabSections = SECTIONS.filter(s => s.id !== 'onboarding');
-
+  // ---- Описание секций ----
   const ICONS = {
-    search:   '<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
-    prep:     '<svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>',
-    progress: '<svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l4-4 4 3 5-7"/></svg>',
-    chat:     '<svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11 7l-4 1 1-4A8 8 0 1 1 21 12Z"/></svg>',
-    profile:  '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></svg>',
+    search:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
+    prep:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 19.5V6a2 2 0 0 1 2-2h12v16H6a2 2 0 0 0-2 2z"/><path d="M8 8h8M8 12h6"/></svg>',
+    progress: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg>',
+    chat:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8z"/></svg>',
+    profile:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>'
   };
 
-  tabbar.innerHTML = tabSections.map(s => `
-    <button class="tg-tab" data-id="${s.id}">
-      ${ICONS[s.id] || ''}
+  const SECTIONS = [
+    { id:'onboarding', label:'Онбординг',  defaultScreen:'O-1', scripts:['proto-screens.js','proto-engine.js'],     showInTabs:false },
+    { id:'search',     label:'Поиск',      defaultScreen:'S-1', scripts:['search-screens.js','search-engine.js'],   showInTabs:true,  icon:ICONS.search   },
+    { id:'prep',       label:'Подготовка', defaultScreen:'P-1', scripts:['prep-screens.js','prep-engine.js'],       showInTabs:true,  icon:ICONS.prep     },
+    { id:'progress',   label:'Прогресс',   defaultScreen:'G-1', scripts:['progress-screens.js','progress-engine.js'], showInTabs:true, icon:ICONS.progress },
+    { id:'chat',       label:'Чат',        defaultScreen:'C-1', scripts:['chat-screens.js','chat-engine.js'],       showInTabs:true,  icon:ICONS.chat     },
+    { id:'profile',    label:'Профиль',    defaultScreen:'U-1', scripts:['profile-screens.js','profile-engine.js'], showInTabs:true,  icon:ICONS.profile  }
+  ];
+  const sectionById = Object.fromEntries(SECTIONS.map(s => [s.id, s]));
+
+  // ---- DOM ----
+  const splash = document.getElementById('splash');
+  const stage = document.getElementById('stage');
+  const view = document.getElementById('view');
+  const tabbar = document.getElementById('tabbar');
+
+  // ---- Tabbar render ----
+  tabbar.innerHTML = SECTIONS.filter(s => s.showInTabs).map(s => `
+    <button class="tg-tab" data-id="${s.id}" type="button">
+      ${s.icon}
       <span>${s.label}</span>
     </button>
   `).join('');
-
   tabbar.querySelectorAll('.tg-tab').forEach(btn => {
     btn.addEventListener('click', () => {
       if(tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
-      goSection(btn.dataset.id);
+      navigate(btn.dataset.id);
     });
   });
 
-  // ---- iframe ----
-  const frame = document.getElementById('section-frame');
-  const splash = document.getElementById('splash');
-  let currentId = null;
-
-  function goSection(id){
-    const sec = SECTIONS.find(s => s.id === id);
-    if(!sec) return;
-    if(currentId === id) return;
-    currentId = id;
-
-    // Update active tab
-    tabbar.querySelectorAll('.tg-tab').forEach(b => {
-      b.classList.toggle('on', b.dataset.id === id);
+  // ---- Lazy script loader ----
+  const loadedScripts = new Set();
+  function loadScript(src){
+    if(loadedScripts.has(src)) return Promise.resolve();
+    return new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = src;
+      s.onload = () => { loadedScripts.add(src); res(); };
+      s.onerror = () => rej(new Error('load failed: ' + src));
+      document.head.appendChild(s);
     });
-
-    // Hide tabbar during onboarding
-    tabbar.style.display = id === 'onboarding' ? 'none' : '';
-    frame.style.bottom = id === 'onboarding' ? '0' : '64px';
-
-    // Update hash (deep links work)
-    if(location.hash !== '#' + id) location.hash = id;
-
-    // Load
-    splash.classList.remove('gone');
-    frame.src = sec.file + '?embed=1';
+  }
+  async function loadSection(sec){
+    for(const src of sec.scripts) await loadScript(src);
   }
 
-  frame.addEventListener('load', () => {
-    // Strip stage chrome from the embedded section
-    try {
-      const doc = frame.contentDocument;
-      if(doc){
-        const css = doc.createElement('style');
-        css.textContent = `
-          /* Hide chrome — the mini app provides its own */
-          .stage-label, .stage-meta, .stage-bottom, .nav-pane, #tweaks { display:none !important; }
-          /* Make the section fill the iframe without phone frame */
-          html,body { background:#fff !important; overflow:hidden !important; }
-          body { display:block !important; min-height:100% !important; height:100% !important; }
-          .phone {
-            position:fixed !important; inset:0 !important;
-            width:100% !important; height:100% !important;
-            border:0 !important; border-radius:0 !important;
-            box-shadow:none !important;
-            transform:none !important;
-          }
-          .phone::before { display:none !important; }
-          .status-bar { display:none !important; }
-          .tg-header { display:none !important; }
-          .view { top:0 !important; }
-          /* Internal section tabbar — hide; we use the global one */
-          .tabbar { display:none !important; }
-          .view.has-tabbar { bottom:0 !important; }
-        `;
-        doc.head.appendChild(css);
-
-        // Listen for "onboarding finished" signal from the inner page
-        // (we patch its `finish()` action via postMessage convention)
-        const inner = frame.contentWindow;
-        if(inner && currentId === 'onboarding'){
-          // Override the inner Proto.finish if present
-          const tryPatch = () => {
-            if(inner.Proto && !inner.__patched){
-              inner.__patched = true;
-              const origFinish = inner.Proto.finish;
-              // The engine wires `actions.finish` via alert; we can intercept via window.alert
-              const origAlert = inner.alert;
-              inner.alert = function(msg){
-                if(String(msg||'').toLowerCase().includes('онбординг')){
-                  markOnboarded();
-                  if(tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-                  goSection('search');
-                  return;
-                }
-                origAlert.call(inner, msg);
-              };
-            }
-          };
-          setTimeout(tryPatch, 100);
-          setTimeout(tryPatch, 500);
-        }
-      }
-    } catch(e) { console.warn('chrome strip failed', e); }
-
-    setTimeout(() => splash.classList.add('gone'), 150);
-  });
-
-  // ---- Telegram BackButton ----
-  // Wire BackButton: tapping = press the in-section back button if available, else close mini app
-  if(tg && tg.BackButton){
-    tg.BackButton.onClick(() => {
-      try {
-        const doc = frame.contentDocument;
-        const back = doc && doc.querySelector('.s-head .back, [data-act="back"]');
-        if(back){ back.click(); return; }
-      } catch(e){}
-      // Fallback: go to first tab
-      if(currentId !== 'search') goSection('search');
-      else tg.close();
-    });
-    // Show on every section except onboarding tab=0
-    tg.BackButton.show();
-  }
-
-  // ---- Initial section ----
-  function initial(){
-    const fromHash = location.hash.replace('#','');
-    if(fromHash && SECTIONS.find(s => s.id === fromHash)){
-      goSection(fromHash);
+  // ---- Activation ----
+  let currentSectionId = null;
+  async function activate(sectionId, screenId){
+    const sec = sectionById[sectionId];
+    if(!sec){
+      activate(window.Store.get().meta.onboardingDone ? 'search' : 'onboarding');
       return;
     }
-    if(!isOnboarded()){
-      goSection('onboarding');
+    if(sectionId === currentSectionId){
+      // Та же секция — просто навигируем на нужный экран внутри
+      const ctx = Sections.get(sectionId);
+      if(screenId && ctx && ctx.goTo) ctx.goTo(screenId);
+      updateBackButton(sectionId, screenId);
+      return;
+    }
+
+    splash.classList.remove('gone');
+
+    try {
+      await loadSection(sec);
+    } catch(e){
+      console.error('section load failed', e);
+      splash.classList.add('gone');
+      return;
+    }
+
+    // Размонтировать предыдущую
+    if(currentSectionId){
+      const prev = Sections.get(currentSectionId);
+      if(prev && prev.unmount) prev.unmount();
+    }
+
+    // Состояние табов и UI
+    tabbar.querySelectorAll('.tg-tab').forEach(b => {
+      b.classList.toggle('on', b.dataset.id === sectionId);
+    });
+    document.body.classList.toggle('section-onboarding', sectionId === 'onboarding');
+
+    // Монтирование
+    view.innerHTML = '';
+    const ctx = Sections.get(sectionId);
+    if(ctx && ctx.mount){
+      ctx.mount(view, screenId || sec.defaultScreen);
     } else {
-      goSection('search');
+      console.warn('section not registered:', sectionId);
+    }
+    currentSectionId = sectionId;
+
+    setTimeout(() => splash.classList.add('gone'), 80);
+    updateBackButton(sectionId, screenId);
+  }
+
+  // ---- Telegram BackButton (минимально для Этапа 2; полный — в Этапе 3) ----
+  function updateBackButton(sectionId, screenId){
+    if(!tg || !tg.BackButton) return;
+    const sec = sectionById[sectionId];
+    const isRoot = !screenId || screenId === (sec && sec.defaultScreen);
+    if(isRoot){
+      tg.BackButton.hide();
+    } else {
+      tg.BackButton.show();
     }
   }
-  initial();
+  if(tg && tg.BackButton){
+    tg.BackButton.onClick(() => {
+      if(history.length > 1){
+        history.back();
+      } else {
+        navigate('search');
+      }
+    });
+  }
 
-  // Listen for hash changes (e.g. external deep link)
+  // ---- Hash router ----
+  // #<section>/<screenId>
+  function parseHash(){
+    const h = decodeURIComponent(location.hash.replace(/^#/, ''));
+    if(!h) return { sectionId: null, screenId: null };
+    const [sec, ...rest] = h.split('/');
+    return { sectionId: sec || null, screenId: rest.join('/') || null };
+  }
+  function navigate(sectionId, screenId){
+    const target = '#' + sectionId + (screenId ? '/' + screenId : '');
+    if(location.hash !== target){
+      location.hash = target; // вызовет hashchange → activate
+    } else {
+      activate(sectionId, screenId);
+    }
+  }
   window.addEventListener('hashchange', () => {
-    const id = location.hash.replace('#','');
-    if(id && SECTIONS.find(s => s.id === id)) goSection(id);
+    const { sectionId, screenId } = parseHash();
+    if(sectionId && sectionById[sectionId]){
+      activate(sectionId, screenId);
+    }
   });
 
-  // Public for debugging
-  window.StazhkaApp = { goSection, markOnboarded, sections: SECTIONS };
+  // ---- Initial ----
+  const initial = (() => {
+    const fromHash = parseHash();
+    if(fromHash.sectionId && sectionById[fromHash.sectionId]) return fromHash;
+    return window.Store.get().meta.onboardingDone
+      ? { sectionId: 'search', screenId: null }
+      : { sectionId: 'onboarding', screenId: null };
+  })();
+  history.replaceState(null, '', '#' + initial.sectionId + (initial.screenId ? '/' + initial.screenId : ''));
+  activate(initial.sectionId, initial.screenId);
+
+  // ---- Public ----
+  window.StazhkaApp = {
+    navigate,
+    activate,
+    sections: SECTIONS,
+    tg
+  };
 })();

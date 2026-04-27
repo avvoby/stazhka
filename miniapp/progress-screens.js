@@ -1,5 +1,5 @@
 /* Progress tab — G-1..G-5 */
-window.Screens = (function(){
+window.ProgressScreens = (function(){
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 
 const ICON={

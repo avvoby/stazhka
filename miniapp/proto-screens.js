@@ -3,7 +3,7 @@
    Each screen: { id, render(state, actions) -> HTML }
    ============================================================ */
 
-window.Screens = (function(){
+window.OnboardingScreens = (function(){
 
   const chev = '<span class="chev">›</span>';
 

@@ -2,7 +2,7 @@
    Stazhka Prep tab — screens (P-1 ... P-10b)
    ============================================================ */
 
-window.Screens = (function(){
+window.PrepScreens = (function(){
 
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
