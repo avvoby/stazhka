@@ -78,6 +78,7 @@
     });
     if(screen.bind) screen.bind(viewEl, state, api);
     saveState();
+    if(window.StazhkaApp) window.StazhkaApp.onScreenRendered(SECTION_ID, state.screenId, viewEl);
   }
 
   function mount(container, initialScreenId){

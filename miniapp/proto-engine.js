@@ -79,6 +79,7 @@
     });
     if(s.bind) s.bind(viewEl, state, actions);
     save();
+    if(window.StazhkaApp) window.StazhkaApp.onScreenRendered('onboarding', s.id, viewEl);
   }
 
   // ---------- Mount/unmount ----------
