@@ -1,5 +1,5 @@
 /* Chat tab — C-1..C-12 */
-window.Screens = (function(){
+window.ChatScreens = (function(){
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 
 const ICON={

@@ -1,5 +1,5 @@
 /* Profile tab — U-1..U-9 */
-window.Screens = (function(){
+window.ProfileScreens = (function(){
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 
 const ICON={

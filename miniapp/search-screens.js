@@ -2,7 +2,7 @@
    Stazhka Search tab — screens (S-1 ... S-9∑)
    ============================================================ */
 
-window.Screens = (function(){
+window.SearchScreens = (function(){
 
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 

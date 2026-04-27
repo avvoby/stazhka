@@ -5,24 +5,30 @@
 <title>Стажка</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#7A1B1B">
-<link rel="stylesheet" href="tg-shell.css">
+<link rel="stylesheet" href="proto-shell.css?v=6">
+<link rel="stylesheet" href="chat.css?v=2">
+<link rel="stylesheet" href="tg-shell.css?v=2">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
 
-<!-- Loading splash -->
+<!-- Загрузочный сплэш -->
 <div id="splash">
   <div class="logo">с</div>
   <div class="name">Стажка</div>
   <div class="sub"><span class="spinner-dot"></span></div>
 </div>
 
-<!-- The current section is rendered inside this iframe -->
-<iframe id="section-frame" src="about:blank" title="Стажка — раздел"></iframe>
+<!-- Stage — сюда монтируется активная секция -->
+<main id="stage">
+  <div id="view"></div>
+</main>
 
 <!-- Bottom tabs -->
 <nav class="tg-tabbar" id="tabbar"></nav>
 
-<script src="tg-app.js"></script>
+<!-- Шелл и стор грузятся синхронно. Скрипты секций — лениво в tg-app.js. -->
+<script src="store.js?v=2"></script>
+<script src="tg-app.js?v=2"></script>
 </body>
 </html>
