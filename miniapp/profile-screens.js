@@ -265,6 +265,18 @@ const U4={id:'U-4',name:'Навыки',render(s){
         <p>Все рекомендованные навыки добавлены. AI пересчитает подборку с учётом новых тегов.</p>
       </div>
       `}
+
+      ${(()=>{
+        const u = window.Store.get().user;
+        const taken = (u.q_excel !== undefined && u.q_excel !== null) ||
+                      (u.q_python !== undefined && u.q_python !== null) ||
+                      (u.q_cases !== undefined && u.q_cases !== null);
+        return `
+        <div class="group-title" style="margin-top:18px">Самотест</div>
+        <div class="rowlist">
+          <div class="rowbtn" data-go="U-skills-test">Пройти тест: Excel · Python · Кейсы${taken?' · пройден':''}<span class="chev">›</span></div>
+        </div>`;
+      })()}
     </div>
   </div>`;
 },bind(r,s,a){
@@ -519,5 +531,90 @@ const U9={id:'U-9',name:'Стажка Pro',render(s){
   </div>`;
 }};
 
-return [U1, U2, U3, U4, U5, U6, U7, U8, U9];
+/* ---------- U-skills-test: тест по навыкам (Excel/Python/Cases) ---------- */
+/* Вопросы переехали из онбординга — стали опциональным самотестом.
+   Читаем/пишем напрямую в Store.user.q_*, чтобы не дублировать состояние в движке. */
+const U_SKILLS_TEST_QUESTIONS = [
+  {
+    key: 'q_excel', label: 'Excel',
+    question: 'Что вернёт VLOOKUP, если значение не найдено?',
+    answers: ['#N/A', '0', 'Пустая ячейка', 'Не знаю'],
+    correct: 0
+  },
+  {
+    key: 'q_python', label: 'Python',
+    question: "Что делает df.groupby('x').mean() в pandas?",
+    answers: ['Среднее по группам', 'Сортировку', 'Фильтр', 'Не знаю'],
+    correct: 0
+  },
+  {
+    key: 'q_cases', label: 'Кейсы',
+    question: 'Что означает MECE в кейс-интервью?',
+    answers: ['Взаимоисключающее и исчерпывающее', 'Метод оценки рынка', 'Тип графика', 'Не знаю'],
+    correct: 0
+  }
+];
+
+const U_SkillsTest = {
+  id: 'U-skills-test', name: 'Тест по навыкам',
+  render(s){
+    const u = window.Store.get().user;
+    const allAnswered = U_SKILLS_TEST_QUESTIONS.every(q => u[q.key] !== undefined && u[q.key] !== null);
+    return `
+    <div class="screen active has-tabbar" data-id="U-skills-test">
+      <div class="s-head">
+        <button class="back" data-go="U-4">${ICON.back}</button>
+        <div class="pill">Самотест</div>
+      </div>
+      <div class="screen-scroll">
+        <div class="title" style="font-size:22px">Три вопроса о базе</div>
+        <div class="subtitle">Влияет на рекомендации в подборке. Можно пройти позже или пропустить отдельные вопросы — выбери «Не знаю».</div>
+
+        ${U_SKILLS_TEST_QUESTIONS.map((q, idx) => {
+          const ans = u[q.key];
+          const answered = ans !== undefined && ans !== null;
+          return `
+          <div class="group-title" style="margin-top:18px">${q.label} · вопрос ${idx + 1}</div>
+          <div class="subtitle" style="margin-bottom:10px">${esc(q.question)}</div>
+          <div class="rowlist">
+            ${q.answers.map((t, i) => {
+              let cls = 'rowbtn';
+              if(answered){
+                if(i === q.correct) cls += ' correct';
+                else if(i === ans) cls += ' wrong';
+                else cls += ' dim';
+              }
+              return `<div class="${cls}" data-quiz="${q.key}" data-quiz-idx="${i}" data-quiz-correct="${q.correct}">${esc(t)}</div>`;
+            }).join('')}
+          </div>`;
+        }).join('')}
+
+        ${allAnswered ? `
+        <div class="ai" style="margin-top:18px">
+          <div class="ai-label">Готово</div>
+          <p>Результаты сохранены. AI учтёт их при подборе вакансий и треков подготовки.</p>
+        </div>` : ''}
+      </div>
+    </div>`;
+  },
+  bind(root, s, a){
+    root.querySelectorAll('[data-quiz]').forEach(el => {
+      el.addEventListener('click', () => {
+        const key = el.dataset.quiz;
+        const u = window.Store.get().user;
+        // Запрещаем перевыбор после ответа (чтобы не было читерства)
+        if(u[key] !== undefined && u[key] !== null) return;
+        const idx = parseInt(el.dataset.quizIdx, 10);
+        const correctIdx = parseInt(el.dataset.quizCorrect, 10);
+        const patch = { user: {} };
+        patch.user[key] = idx;
+        patch.user[key + '_correct'] = idx === correctIdx;
+        window.Store.update(patch);
+        a.rerender();
+      });
+    });
+  }
+};
+
+return [U1, U2, U3, U4, U5, U6, U7, U8, U9, U_SkillsTest];
 })();
