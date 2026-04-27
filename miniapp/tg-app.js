@@ -25,8 +25,27 @@
       tg.setHeaderColor && tg.setHeaderColor('#7A1B1B');
       tg.setBackgroundColor && tg.setBackgroundColor('#ffffff');
       tg.disableVerticalSwipes && tg.disableVerticalSwipes();
+      // MainButton — фиксируем фирменный цвет, дальше только меняем текст
+      if(tg.MainButton){
+        tg.MainButton.setParams({ color: '#7A1B1B', text_color: '#ffffff' });
+        tg.MainButton.hide();
+      }
+      console.log('TG colorScheme:', tg.colorScheme);
     } catch(e){ console.warn('TG init', e); }
   }
+
+  // ---- Префилл ФИО из tg.initDataUnsafe.user ----
+  // Если Telegram передал имя/фамилию и в Store пусто — заполняем.
+  // Юзер всё равно увидит онбординг, но шаг ФИО будет с предзаполненным значением.
+  (function prefillFromTelegram(){
+    if(!tg || !tg.initDataUnsafe) return;
+    const u = tg.initDataUnsafe.user;
+    if(!u || !u.first_name) return;
+    const cur = window.Store.get();
+    if(cur.user.fio && cur.user.fio.trim()) return;
+    const full = [u.first_name, u.last_name].filter(Boolean).join(' ').trim();
+    if(full) window.Store.update({ user: { fio: full } });
+  })();
 
   // ---- Описание секций ----
   const ICONS = {
@@ -135,7 +154,7 @@
     updateBackButton(sectionId, screenId);
   }
 
-  // ---- Telegram BackButton (минимально для Этапа 2; полный — в Этапе 3) ----
+  // ---- Telegram BackButton ----
   function updateBackButton(sectionId, screenId){
     if(!tg || !tg.BackButton) return;
     const sec = sectionById[sectionId];
@@ -155,6 +174,68 @@
       }
     });
   }
+
+  // ---- Telegram MainButton ----
+  // Движок может попросить shell показать primary CTA через MainButton.
+  // Сейчас mirroring включён только для онбординга (там самый чёткий CTA "Далее").
+  let mainButtonHandler = null;
+  function setMainButton(opts){
+    if(!tg || !tg.MainButton) return;
+    const mb = tg.MainButton;
+    if(!opts){ clearMainButton(); return; }
+    mb.setText(opts.text || 'Далее');
+    if(opts.color) mb.setParams({ color: opts.color });
+    if(mainButtonHandler) mb.offClick(mainButtonHandler);
+    mainButtonHandler = typeof opts.onClick === 'function' ? opts.onClick : null;
+    if(mainButtonHandler) mb.onClick(mainButtonHandler);
+    if(opts.disabled){
+      mb.disable && mb.disable();
+    } else {
+      mb.enable && mb.enable();
+    }
+    mb.show();
+  }
+  function clearMainButton(){
+    if(!tg || !tg.MainButton) return;
+    const mb = tg.MainButton;
+    if(mainButtonHandler){ mb.offClick(mainButtonHandler); mainButtonHandler = null; }
+    mb.hide();
+  }
+
+  // ---- Хук, который движки дёргают после render() ----
+  // Обновляет BackButton под текущий экран и (для онбординга) мирроринг primary CTA на MainButton.
+  function onScreenRendered(sectionId, screenId, viewEl){
+    updateBackButton(sectionId, screenId);
+
+    if(sectionId === 'onboarding' && viewEl){
+      // Ищем primary .btn (не ghost / не outline / не back / не reset / не jump)
+      const candidates = viewEl.querySelectorAll('.btn:not(.ghost):not(.outline)');
+      let primary = null;
+      for(const el of candidates){
+        const act = el.dataset.act;
+        if(act === 'back' || act === 'reset' || act === 'jump') continue;
+        primary = el;
+        break;
+      }
+      if(primary){
+        const text = (primary.textContent || 'Далее').trim();
+        const disabled = primary.getAttribute('aria-disabled') === 'true';
+        setMainButton({ text, disabled, onClick: () => { if(!disabled) primary.click(); } });
+        return;
+      }
+    }
+    clearMainButton();
+  }
+
+  // ---- Haptic feedback на тапы по интерактиву ----
+  // Делегируем один раз на view; при каждом render() viewEl остаётся тем же DOM-узлом.
+  view.addEventListener('click', (e) => {
+    if(!tg || !tg.HapticFeedback) return;
+    const t = e.target.closest('.chip, .btn, [data-go], [data-act], .rowbtn, .vacancy, .module, .track, .tab, .toggle');
+    if(t) {
+      try { tg.HapticFeedback.impactOccurred('light'); } catch(err){}
+    }
+  });
 
   // ---- Hash router ----
   // #<section>/<screenId>
@@ -195,6 +276,22 @@
     navigate,
     activate,
     sections: SECTIONS,
-    tg
+    tg,
+    // SDK-мост для движков
+    setMainButton,
+    clearMainButton,
+    onScreenRendered,
+    haptic(kind){
+      if(!tg || !tg.HapticFeedback) return;
+      try {
+        if(kind === 'success' || kind === 'warning' || kind === 'error'){
+          tg.HapticFeedback.notificationOccurred(kind);
+        } else if(kind === 'select'){
+          tg.HapticFeedback.selectionChanged();
+        } else {
+          tg.HapticFeedback.impactOccurred(kind || 'light');
+        }
+      } catch(e){}
+    }
   };
 })();

@@ -104,7 +104,7 @@ bg:         #FFFFFF
 - [x] **0.** Репо `stazhka-miniapp/`, baseline-коммит
 - [x] **1.** `store.js` — единый стор, миграция со старых ключей
 - [x] **2.** Single-HTML SPA (убрать iframe, hash-роутер)
-- [ ] **3.** Telegram SDK (MainButton/BackButton/Haptic/initDataUnsafe)
+- [x] **3.** Telegram SDK (MainButton/BackButton/Haptic/initDataUnsafe)
 - [ ] **4.** Сократить онбординг 10→5 экранов
 - [ ] **5.** AI-чат через Cloudflare Worker
 - [ ] **6.** Деплой на GitHub Pages + BotFather
