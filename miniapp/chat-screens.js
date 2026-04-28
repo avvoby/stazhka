@@ -105,27 +105,74 @@ const C1={id:'C-1',name:'Список чатов',render(s){
 }};
 
 /* ================== C-2: AI-наставник · активный диалог ================== */
+/* Интерактивный чат. Сообщения берутся из state.chatMessages, ввод снизу
+   уходит в api.sendChatMessage(text), которая бьёт в /api/chat бэкенда. */
+function fmtMsg(t){
+  // Минимальный markdown: \n → <br>, **bold** → <b>
+  return esc(t).replace(/\n/g, '<br>').replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+}
+const QUICK_PROMPTS_C2 = [
+  'Покажи 3 стажировки под мой профиль',
+  'Что спрашивают на интервью в консалтинге?',
+  'Разбери моё резюме'
+];
 const C2={id:'C-2',name:'AI · активный диалог',render(s){
+  const msgs = s.chatMessages || [];
+  const showQuick = msgs.length === 0 && !s.chatPending && !s.chatError;
+  let body = bubbleSys('Сегодня');
+  if(msgs.length === 0){
+    body += bubbleIn(
+      'Привет. Я твой AI-наставник по стажкам. Помогу с подбором, резюме, подготовкой к интервью. Задавай вопрос или выбери подсказку снизу.',
+      ''
+    );
+  } else {
+    for(const m of msgs){
+      if(m.role === 'user') body += bubbleOut(fmtMsg(m.content), m.time, 'read');
+      else                  body += bubbleIn(fmtMsg(m.content), m.time);
+    }
+  }
+  if(s.chatPending){
+    body += `<div class="typing"><span></span><span></span><span></span></div>`;
+  }
+  if(s.chatError){
+    body += bubbleSys('Ошибка: ' + esc(s.chatError));
+  }
+  const remainingHint = (typeof s.chatRemaining === 'number')
+    ? `<div class="b-sys"><span>Осталось запросов сегодня: ${s.chatRemaining}</span></div>` : '';
   return `
   <div class="screen active chat" data-id="C-2" style="padding:0">
     ${chatHeader('AI-наставник','всегда онлайн · не человек','★','var(--accent)')}
-    <div class="chat-scroll">
-      ${bubbleSys('Сегодня')}
-      ${bubbleIn('Привет! Я твой наставник по стажкам. Задавай вопросы про вакансии, помогу с резюме и подготовкой. С чего начнём?', '13:45')}
-      ${bubbleOut('Какие сейчас хорошие стажировки в банках для 3 курса?','13:58','read')}
-      ${bubbleIn(`Вот что есть на этой неделе (match под твой профиль > 75%):
-      <div class="b-card vac">
-        <div class="b-card-top"><div class="b-card-logo">С</div><div><div class="b-card-t">Сбер · Стажёр-аналитик</div><div class="b-card-sub">Москва · 60 000 ₽ · match 89%</div></div></div>
-        <div class="b-card-tags"><span>SQL</span><span>Excel</span><span>финмодели</span></div>
-        <div class="b-card-act">Открыть вакансию</div>
-      </div>`,'14:00')}
-      ${bubbleIn('Могу добавить ещё 2 варианта — Альфа и Т-Банк. Или разобрать конкретную вакансию детальнее.','14:00')}
-      <div class="typing">
-        <span></span><span></span><span></span>
-      </div>
+    <div class="chat-scroll" id="c2-scroll">
+      ${body}
+      ${remainingHint}
     </div>
-    ${composer('Спроси меня о чём угодно', ['Покажи Альфу','Что спрашивают на интервью в Сбере?','Разбери моё резюме'])}
+    ${composer('Спроси меня о чём угодно', showQuick ? QUICK_PROMPTS_C2 : null)}
   </div>`;
+},
+bind(root, s, api){
+  const input = root.querySelector('.cp-input');
+  const send = root.querySelector('.cp-send');
+  const scroll = root.querySelector('#c2-scroll');
+
+  function submit(text){
+    const v = (text != null ? text : input.value);
+    if(!v || !v.trim() || s.chatPending) return;
+    if(text == null) input.value = '';
+    api.sendChatMessage(v);
+  }
+
+  if(input){
+    input.addEventListener('keydown', e => {
+      if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); submit(); }
+    });
+  }
+  if(send) send.addEventListener('click', () => submit());
+
+  root.querySelectorAll('[data-send]').forEach(el => {
+    el.addEventListener('click', () => submit(el.dataset.send));
+  });
+
+  if(scroll) scroll.scrollTop = scroll.scrollHeight;
 }};
 
 /* ================== C-3: AI · первый запуск (empty state) ================== */

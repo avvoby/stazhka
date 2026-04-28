@@ -42,6 +42,44 @@ class ClaudeAIService:
         if not self._enabled:
             logger.warning("OPENROUTER_API_KEY не задан — AI-функции отключены")
 
+    # ── Public API для Mini App chat ─────────────────────────────────────────
+
+    @property
+    def is_enabled(self) -> bool:
+        """Доступен ли AI (есть ли OPENROUTER_API_KEY)."""
+        return self._enabled
+
+    async def chat_completion(
+        self,
+        system: str,
+        messages: list[dict[str, str]],
+        *,
+        model: str | None = None,
+    ) -> str:
+        """Multi-turn чат через OpenRouter. messages = [{role, content}, ...]."""
+        if not self._enabled:
+            raise RuntimeError("OPENROUTER_API_KEY не задан")
+        payload = {
+            "model": model or self._fast_model,
+            "max_tokens": self._max_tokens,
+            "messages": [{"role": "system", "content": system}, *messages],
+        }
+        logger.info(
+            "OpenRouter chat: model=%s, msgs=%d",
+            payload["model"],
+            len(messages),
+        )
+        resp = await self._client.post(_OPENROUTER_URL, json=payload)
+        if not resp.is_success:
+            logger.error(
+                "OpenRouter error %s: %s",
+                resp.status_code,
+                resp.text[:500],
+            )
+        resp.raise_for_status()
+        data = resp.json()
+        return data["choices"][0]["message"]["content"]
+
     # ── Helpers ──────────────────────────────────────────────────────────────
 
     async def _ask(self, model: str, system: str, user: str) -> str:

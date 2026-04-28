@@ -84,6 +84,68 @@ Cloudflare обновляется быстрее (за 30 сек после `git
 - **iOS**: в первый раз Telegram может закешировать старую версию — попроси тестера закрыть мини-апп и открыть заново.
 - **Обновление кода**: после `git push` на GitHub Pages — обновится через 1–3 мин. На iOS придётся «long-press на Menu Button → Refresh» либо переоткрыть.
 
+## Бэкенд через ngrok (для AI-чата)
+
+Mini App статичен — фронт раздаёт GitHub Pages. Но AI-чат (раздел «Чат» → «AI-наставник») должен ходить на твой бэкенд (Python aiogram-бот в `/Users/Kirill/Developer/stazhka/`, FastAPI на `localhost:8000`). Telegram умеет открывать только HTTPS-адреса, значит локальный uvicorn нужно прокинуть наружу.
+
+### Шаг A — поднять бэкенд
+
+```bash
+cd /Users/Kirill/Developer/stazhka
+docker compose up -d api db redis
+# логи: docker compose logs -f api
+# проверка: curl http://localhost:8000/api/health
+```
+
+`OPENROUTER_API_KEY` должен быть в `.env` (он там уже).
+
+### Шаг B — туннель ngrok с фиксированным доменом
+
+ngrok даёт один бесплатный статичный домен на аккаунт. URL не меняется при перезапуске — это важно, потому что он зашит в `miniapp/index.html` и пушится в Pages.
+
+1. **Установить**: https://ngrok.com/download → `brew install ngrok` (на macOS)
+2. **Зарегистрироваться** на ngrok.com (бесплатно)
+3. **Authtoken**: ngrok dashboard → Your Authtoken → скопировать → `ngrok config add-authtoken <TOKEN>`
+4. **Reserved domain**: dashboard → Universal Gateway → Domains → New Domain. Получишь что-то вроде `https://stazhka-<суффикс>.ngrok-free.app` (бесплатно, до 1 домена на аккаунт)
+5. **Запустить туннель**:
+   ```bash
+   ngrok http --domain=stazhka-<суффикс>.ngrok-free.app 8000
+   ```
+   Окно терминала должно остаться открытым. Закроешь — туннель упадёт.
+6. **Проверить**: открой `https://stazhka-<суффикс>.ngrok-free.app/api/health` в браузере → должен вернуть JSON `{"status":"ok",...}`
+
+### Шаг C — вписать URL в Mini App
+
+Открой `miniapp/index.html`, найди:
+
+```js
+window.STAZHKA_CONFIG = {
+  apiUrl: ''
+};
+```
+
+Замени на свой:
+
+```js
+window.STAZHKA_CONFIG = {
+  apiUrl: 'https://stazhka-<суффикс>.ngrok-free.app'
+};
+```
+
+`git add miniapp/index.html && git commit -m "chore: api url" && git push origin main`. Через 1-3 мин Pages обновится → Mini App начнёт ходить в твой бэкенд.
+
+### Что увидит юзер
+
+- В разделе «Чат» → «AI-наставник» (карточка со звездой ★ сверху списка) — реальный диалог с Claude через OpenRouter (`claude-haiku-3-5`).
+- Лимит: **5 запросов в день на Telegram-юзера**, in-memory счётчик в FastAPI (сбрасывается при рестарте `api`-контейнера). Для прода — переехать на Redis (есть скелет в `src/infrastructure/ai/rate_limiter.py`).
+- Если `apiUrl` пустой или туннель лежит — Mini App покажет ошибку в чате, остальные секции работают как обычно.
+
+### Туннель упал, что делать
+
+- ngrok закрыл окно → запусти команду снова, домен тот же
+- Mac уснул → разбуди, поправь сеть
+- Хочешь мониторить uptime — навесь `caffeinate -d -i ngrok ...` или вынеси на VPS
+
 ## Troubleshooting
 
 **Открывается, но видна странная белая полоса сверху** — нормально, это header Telegram. Цвет задаём в `tg-app.js` через `tg.setHeaderColor`.

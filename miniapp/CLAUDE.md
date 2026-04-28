@@ -10,7 +10,7 @@ Telegram Mini App для студентов ВШБ НИУ ВШЭ — фронт 
 
 - Vanilla HTML/CSS/JS. Никаких фреймворков (React/Vue/Svelte) и сборщиков (webpack/vite/ts).
 - Только статика — GitHub Pages отдаёт как есть.
-- AI-чат (этап 5): Cloudflare Worker → Anthropic API (`claude-haiku-4-5-20251001`).
+- AI-чат: Python aiogram-бот в `/Users/Kirill/Developer/stazhka/` (FastAPI на uvicorn:8000) → OpenRouter (`anthropic/claude-haiku-3-5`). Локально через `docker compose up`, наружу прокинуто через ngrok (см. README-deploy.md).
 
 ## Архитектура
 
@@ -106,5 +106,5 @@ bg:         #FFFFFF
 - [x] **2.** Single-HTML SPA (убрать iframe, hash-роутер)
 - [x] **3.** Telegram SDK (MainButton/BackButton/Haptic/initDataUnsafe)
 - [x] **4.** Сократить онбординг 10→5 экранов
-- [ ] **5.** AI-чат через Cloudflare Worker
-- [ ] **6.** Деплой на GitHub Pages + BotFather
+- [x] **5.** AI-чат через FastAPI бэкенд + ngrok (вместо Cloudflare Worker)
+- [ ] **6.** Деплой на GitHub Pages + BotFather (Pages подключён, бот в работе)

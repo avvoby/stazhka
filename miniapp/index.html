@@ -27,6 +27,17 @@
 <!-- Bottom tabs -->
 <nav class="tg-tabbar" id="tabbar"></nav>
 
+<!-- Конфиг: URL бэкенда (Python aiogram-бот, FastAPI на uvicorn:8000),
+     прокинутый наружу через ngrok / Cloudflare Tunnel. Меняется при смене
+     туннеля. См. README-deploy.md, секция «Бэкенд через ngrok». -->
+<script>
+window.STAZHKA_CONFIG = {
+  // Замени на реальный URL туннеля без слэша на конце.
+  // Пример: 'https://stazhka.ngrok-free.app'
+  apiUrl: ''
+};
+</script>
+
 <!-- Шелл и стор грузятся синхронно. Скрипты секций — лениво в tg-app.js. -->
 <script src="store.js?v=2"></script>
 <script src="tg-app.js?v=2"></script>
