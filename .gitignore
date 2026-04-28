@@ -3,6 +3,9 @@
 .env.local
 .env.production
 
+# DB backups (содержат персональные данные пользователей)
+backups/
+
 # Python
 __pycache__/
 *.pyc
