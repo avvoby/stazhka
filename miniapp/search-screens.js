@@ -69,7 +69,7 @@ function renderSegBody(host, s, a){
 }
 
 function renderPicks(host, s, a){
-  if(window.__TWEAKS.emptyPicks){
+  if(window.__TWEAKS?.emptyPicks){
     host.innerHTML = `
       <div class="empty">
         <div class="glyph">${ICON.search}</div>
