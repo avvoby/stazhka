@@ -27,14 +27,11 @@
 <!-- Bottom tabs -->
 <nav class="tg-tabbar" id="tabbar"></nav>
 
-<!-- Конфиг: URL бэкенда (Python aiogram-бот, FastAPI на uvicorn:8000),
-     прокинутый наружу через ngrok / Cloudflare Tunnel. Меняется при смене
-     туннеля. См. README-deploy.md, секция «Бэкенд через ngrok». -->
+<!-- Конфиг: URL бэкенда. FastAPI на Yandex Cloud VM, через nginx с SSL
+     (Let's Encrypt). См. docs/DEPLOYMENT.md. -->
 <script>
 window.STAZHKA_CONFIG = {
-  // URL ngrok-туннеля к локальному FastAPI бэкенду (uvicorn :8000).
-  // При смене туннеля — поправить здесь и запушить в main.
-  apiUrl: 'https://smartness-regulate-savor.ngrok-free.dev'
+  apiUrl: 'https://api.stazhka.ru'
 };
 </script>
 
