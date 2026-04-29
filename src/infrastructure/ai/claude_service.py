@@ -26,8 +26,11 @@ class ClaudeAIService:
     def __init__(self) -> None:
         api_key = settings.openrouter.api_key
         self._enabled = bool(api_key)
-        self._fast_model = "anthropic/claude-haiku-3-5-20251001"
-        self._quality_model = "anthropic/claude-sonnet-4-5"
+        # Slugs verified 2026-04-29 against OpenRouter /v1/models;
+        # tested end-to-end via POST /api/chat through https://api.stazhka.ru.
+        # Use snapshot pins (not ~latest aliases) to guard against breaking changes.
+        self._fast_model = "anthropic/claude-haiku-4.5"
+        self._quality_model = "anthropic/claude-sonnet-4.6"
         self._max_tokens = settings.openrouter.max_tokens
         self._client = httpx.AsyncClient(
             verify=False,
