@@ -1086,3 +1086,101 @@ body{
 .preview-card .pv-field b{font-weight:500}
 .preview-card .pv-field span{color:var(--ink-2)}
 .preview-card .pv-field.hidden span{text-decoration:line-through}
+
+/* ============================================================
+   Welcome screen — O-1 (редизайн, апрель 2026)
+   Editorial layout: typographic hierarchy, generous space,
+   subtle accent, минимум декораций
+   ============================================================ */
+.screen.welcome{
+  padding:32px 24px 24px;
+  background:linear-gradient(180deg, #FFFFFF 0%, #FAFAF9 100%);
+}
+
+/* Шапка: декоративные точки + lockup */
+.welcome-top{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:48px;min-height:24px;
+}
+.welcome-dots{display:flex;gap:6px}
+.welcome-dots span{
+  width:6px;height:6px;border-radius:50%;
+  background:var(--accent);
+}
+.welcome-dots span:nth-child(2){opacity:.5}
+.welcome-dots span:nth-child(3){opacity:.25}
+.welcome-eyebrow{
+  font-size:11px;font-weight:500;letter-spacing:.8px;
+  text-transform:uppercase;color:var(--ink-2);
+  font-variant-numeric:tabular-nums;
+}
+
+/* Hero блок */
+.welcome-hero{margin-bottom:8px}
+.welcome-title{
+  font-size:48px;font-weight:700;line-height:1;
+  letter-spacing:-1.5px;color:var(--accent);
+  margin:0 0 18px;
+}
+.welcome-lead{
+  font-size:24px;font-weight:400;line-height:1.25;
+  letter-spacing:-.5px;color:var(--ink);
+  margin:0;
+}
+.welcome-lead em{
+  font-style:italic;font-weight:400;color:var(--accent);
+}
+
+/* Тонкий акцент-делиметр */
+.welcome-divider{
+  width:32px;height:1px;background:var(--ink);
+  margin:32px 0 24px;
+}
+
+/* Section label типа "На что готова" */
+.welcome-section-label{
+  font-size:11px;font-weight:500;letter-spacing:.8px;
+  text-transform:uppercase;color:var(--ink-2);
+  margin-bottom:8px;
+}
+
+/* Список фич */
+.welcome-features{margin:0}
+.welcome-feature{
+  display:flex;gap:16px;padding:14px 0;
+  border-bottom:1px solid var(--line);
+}
+.welcome-feature:last-child{border-bottom:none}
+.wf-num{
+  width:28px;flex-shrink:0;
+  font-size:12px;font-weight:500;
+  color:var(--accent);
+  font-variant-numeric:tabular-nums;
+  letter-spacing:.4px;padding-top:2px;
+}
+.wf-body{flex:1;min-width:0}
+.wf-title{
+  font-size:16px;font-weight:500;
+  color:var(--ink);
+  letter-spacing:-.2px;
+  margin-bottom:3px;
+}
+.wf-sub{
+  font-size:13px;line-height:1.4;
+  color:var(--ink-2);
+}
+
+/* Primary CTA с стрелкой */
+.welcome-cta{
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  padding:18px;font-size:16px;font-weight:500;
+  border-radius:14px;margin-top:0;
+  min-height:56px;
+}
+.welcome-cta svg{width:16px;height:16px;flex-shrink:0}
+
+/* Подпись под кнопкой */
+.welcome-foot{
+  text-align:center;font-size:12px;color:var(--ink-2);
+  margin-top:14px;letter-spacing:-.1px;
+}

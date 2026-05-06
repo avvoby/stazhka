@@ -19,13 +19,51 @@ window.OnboardingScreens = (function(){
     id: 'O-1', name: 'Приветствие',
     render(s, a){
       return `
-      <div class="screen active" data-id="O-1">
-        <div class="logo-wrap">
-          <div class="logo-mark">С</div>
-          <div class="title">Стажка</div>
-          <div class="subtitle">За 2 минуты соберу твой профиль и покажу первые вакансии</div>
+      <div class="screen active welcome" data-id="O-1">
+        <div class="welcome-top">
+          <div class="welcome-dots"><span></span><span></span><span></span></div>
+          <span class="welcome-eyebrow">ВШБ × Стажка</span>
         </div>
-        <button class="btn" data-act="next">Начать</button>
+
+        <div class="welcome-hero">
+          <h1 class="welcome-title">Стажка</h1>
+          <p class="welcome-lead">Найди свою <em>первую</em><br>стажировку</p>
+        </div>
+
+        <div class="welcome-divider"></div>
+
+        <div class="welcome-section-label">На что готова</div>
+        <div class="welcome-features">
+          <div class="welcome-feature">
+            <div class="wf-num">01</div>
+            <div class="wf-body">
+              <div class="wf-title">Подбор по профилю</div>
+              <div class="wf-sub">5 вакансий под твои навыки и направление</div>
+            </div>
+          </div>
+          <div class="welcome-feature">
+            <div class="wf-num">02</div>
+            <div class="wf-body">
+              <div class="wf-title">AI-наставник</div>
+              <div class="wf-sub">Чат с Claude 24/7. Резюме, интервью, кейсы</div>
+            </div>
+          </div>
+          <div class="welcome-feature">
+            <div class="wf-num">03</div>
+            <div class="wf-body">
+              <div class="wf-title">Mock-интервью</div>
+              <div class="wf-sub">Прогон по типичным вопросам с разбором</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="spacer"></div>
+
+        <button class="btn welcome-cta" data-act="next">
+          Начать
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+        <div class="welcome-foot">2 минуты на профиль · потом сразу подборка</div>
       </div>`;
     }
   };
